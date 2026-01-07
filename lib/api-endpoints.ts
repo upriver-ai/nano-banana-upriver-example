@@ -18,7 +18,7 @@ export function getApiEndpoints(
   return [
     {
       title: "/brand/research",
-      url: `${baseDocsUrl}/api-reference/brands/brand-details`,
+      url: `${baseDocsUrl}/api-reference/brands/brand-details?ref=banana`,
       description:
         "Get brand information including industry, values, and mission",
       curlRequest: `curl -X POST "https://api.upriver.ai/v2/brand/research" \\
@@ -33,7 +33,7 @@ export function getApiEndpoints(
     },
     {
       title: "/brand/products",
-      url: `${baseDocsUrl}/api-reference/products/products`,
+      url: `${baseDocsUrl}/api-reference/products/products?ref=banana`,
       description: "Get products associated with a brand",
       curlRequest: `curl -X POST "https://api.upriver.ai/v1/brand/products" \\
   -H "X-API-Key: YOUR_API_KEY" \\
@@ -47,7 +47,7 @@ export function getApiEndpoints(
     },
     {
       title: "/audience_insights",
-      url: `${baseDocsUrl}/api-reference/audience/insights`,
+      url: `${baseDocsUrl}/api-reference/audience/insights?ref=banana`,
       description:
         "Get relevant audience insights for a specified brand and/or product",
       curlRequest: `curl -X POST "https://api.upriver.ai/v2/audience_insights" \\
@@ -61,7 +61,7 @@ export function getApiEndpoints(
     },
     {
       title: "/audience_insights/{continuation_token}/citations",
-      url: `${baseDocsUrl}/api-reference/audience/insights-citations`,
+      url: `${baseDocsUrl}/api-reference/audience/insights-citations?ref=banana`,
       description: "Get real-world evidence for audience insights",
       curlRequest: `curl -X GET "https://api.upriver.ai/v2/audience_insights/{continuation_token}/citations" \\
   -H "X-API-Key: YOUR_API_KEY"`,
