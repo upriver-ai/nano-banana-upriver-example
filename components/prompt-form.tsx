@@ -51,8 +51,9 @@ export function PromptForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-5"
       >
+        <h2 className="text-lg font-bold">Get Started</h2>
         <FormField
           control={form.control}
           name="brandUrl"
@@ -98,12 +99,9 @@ export function PromptForm({
           {isLoading ? "Generating..." : "Generate Image"}
         </Button>
         {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">
-            {error}
-          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         )}
       </form>
     </Form>
   );
 }
-
