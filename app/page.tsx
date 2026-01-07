@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SparklesIcon, ExternalLinkIcon } from "lucide-react";
 import { CodeBlockCard } from "@/components/code-block-card";
 import {
@@ -19,6 +20,7 @@ import {
   getInsightCitations,
 } from "@/services/upriver-client";
 import { generateImage } from "@/services/nano-banana-client";
+import { generateImagePrompt } from "@/services/gemini-client";
 import { getApiEndpoints } from "@/lib/api-endpoints";
 
 const BASE_DOCS_URL = "https://docs.upriver.ai/";
@@ -101,8 +103,6 @@ export default function Home() {
     setAudienceInsightsCitations(null);
 
     try {
-      const imagePromise = generateImage({ prompt: brief });
-
       let brandResearchData: unknown = null;
       let productsData: unknown = null;
       let audienceInsightsData: unknown = null;
@@ -113,12 +113,26 @@ export default function Home() {
 
         const [brandResearchRes, productsRes] = await Promise.all([
           getBrandDetails({ brand_url: brandUrlValue }).catch((err) => {
-            console.error("Brand research error:", err);
-            return { error: err.message };
+            console.warn(
+              "Brand research unavailable:",
+              err instanceof Error ? err.message : "Unknown error"
+            );
+            return {
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Failed to fetch brand research",
+            };
           }),
           getProducts({ brand_url: brandUrlValue }).catch((err) => {
-            console.error("Products error:", err);
-            return { error: err.message };
+            console.warn(
+              "Products unavailable:",
+              err instanceof Error ? err.message : "Unknown error"
+            );
+            return {
+              error:
+                err instanceof Error ? err.message : "Failed to fetch products",
+            };
           }),
         ]);
 
@@ -134,8 +148,16 @@ export default function Home() {
         audienceInsightsData = await getAudienceInsights(
           audienceInsightsPayload
         ).catch((err) => {
-          console.error("Audience insights error:", err);
-          return { error: err.message };
+          console.warn(
+            "Audience insights unavailable:",
+            err instanceof Error ? err.message : "Unknown error"
+          );
+          return {
+            error:
+              err instanceof Error
+                ? err.message
+                : "Failed to fetch audience insights",
+          };
         });
 
         const continuationToken =
@@ -168,18 +190,39 @@ export default function Home() {
               return data;
             })
             .catch((err) => {
-              console.error("Audience insights citations error:", err);
-              return { error: err.message };
+              console.warn(
+                "Audience insights citations unavailable:",
+                err instanceof Error ? err.message : "Unknown error"
+              );
+              return {
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to fetch citations",
+              };
             });
-        } else {
-          console.log(
-            "No continuation_token found in audience insights:",
-            audienceInsightsData
-          );
+        } else if (
+          audienceInsightsData &&
+          typeof audienceInsightsData === "object" &&
+          "error" in audienceInsightsData
+        ) {
+          console.warn("Audience insights failed, skipping citations");
         }
       }
 
-      const imageResult = await imagePromise;
+      const promptResult = await generateImagePrompt({
+        brandUrl: brandUrl.trim() || "",
+        additionalInstructions: brief.trim() || undefined,
+        brandResearch: brandResearchData as any,
+        products: productsData as any,
+        audienceInsights: audienceInsightsData as any,
+        audienceInsightsCitations: audienceInsightsCitationsData as any,
+      });
+
+      console.log("Generated prompt result:", promptResult);
+      console.log("Generated prompt:", promptResult.prompt);
+
+      const imageResult = await generateImage({ prompt: promptResult.prompt });
       setImageDataUrl(imageResult.dataUrl);
 
       if (brandUrl.trim()) {
@@ -196,114 +239,121 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-between bg-white dark:bg-black sm:items-start">
+    <main className="flex h-screen w-full flex-col items-center justify-between bg-white dark:bg-black sm:items-start overflow-hidden">
       <ResizablePanelGroup
         direction="horizontal"
-        className="flex grow"
+        className="flex grow h-full"
       >
-        <ResizablePanel
-          defaultSize={60}
-          minSize={800}
-          className="flex flex-col"
-        >
-          <section className="flex flex-col gap-3 w-full p-5">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="brandUrl">Brand URL</Label>
-                <Input
-                  id="brandUrl"
-                  type="text"
-                  placeholder="https://acme.com"
-                  value={brandUrl}
-                  onChange={(e) => setBrandUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoading) {
-                      handleGenerateImage();
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="brief">
-                  Additional Instructions (optional)
-                </Label>
-                <Input
-                  id="brief"
-                  type="text"
-                  placeholder="Generate an image that's on-brand and aligned with their audience"
-                  value={brief}
-                  onChange={(e) => setBrief(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoading) {
-                      handleGenerateImage();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <Button
-              onClick={handleGenerateImage}
-              disabled={isLoading}
-              className="self-start"
-            >
-              <SparklesIcon className="size-4" />
-              {isLoading ? "Generating..." : "Generate Image"}
-            </Button>
-            {error && (
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            )}
-          </section>
-          <Separator />
-          <section className="flex flex-col grow gap-3 w-full p-5">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-gray-500 dark:text-gray-400">
-                  Generating image...
-                </p>
-              </div>
-            ) : imageDataUrl ? (
-              <div className="flex items-start justify-center h-full">
-                <img
-                  src={imageDataUrl}
-                  alt="Generated image"
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                Enter a brand URL and click Generate Image to create an image
-              </div>
-            )}
-          </section>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
         <ResizablePanel
           defaultSize={40}
           minSize={400}
+          className="flex flex-col h-full"
+        >
+          <ScrollArea className="h-full w-full">
+            <div className="flex flex-col min-w-0">
+              <section className="flex flex-col gap-3 w-full p-5 min-w-0">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="brandUrl">Brand URL</Label>
+                    <Input
+                      id="brandUrl"
+                      type="text"
+                      placeholder="https://acme.com"
+                      value={brandUrl}
+                      onChange={(e) => setBrandUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoading) {
+                          handleGenerateImage();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="brief">
+                      Additional Instructions (optional)
+                    </Label>
+                    <Input
+                      id="brief"
+                      type="text"
+                      placeholder="Generate an image that's on-brand and aligned with their audience"
+                      value={brief}
+                      onChange={(e) => setBrief(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoading) {
+                          handleGenerateImage();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleGenerateImage}
+                  disabled={isLoading}
+                  className="self-start"
+                >
+                  <SparklesIcon className="size-4" />
+                  {isLoading ? "Generating..." : "Generate Image"}
+                </Button>
+                {error && (
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
+                )}
+              </section>
+              <Separator />
+              <ul className="flex flex-col gap-3 list-none p-5 min-w-0">
+                {getApiEndpoints(BASE_DOCS_URL, {
+                  brandResearch,
+                  products,
+                  audienceInsights,
+                  audienceInsightsCitations,
+                }).map((endpoint, index) => (
+                  <li
+                    key={index}
+                    className="min-w-0"
+                  >
+                    <CodeBlockCard
+                      title={endpoint.title}
+                      actionLink={endpoint.url}
+                      actionIcon={ExternalLinkIcon}
+                      description={endpoint.description}
+                      code={
+                        endpoint.data !== null && endpoint.data !== undefined
+                          ? formatJsonForDisplay(endpoint.data)
+                          : endpoint.curlRequest
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </ScrollArea>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel
+          defaultSize={60}
+          minSize={600}
           className="p-5"
         >
-          <ul className="flex flex-col gap-3 list-none p-0 m-0">
-            {getApiEndpoints(BASE_DOCS_URL, {
-              brandResearch,
-              products,
-              audienceInsights,
-              audienceInsightsCitations,
-            }).map((endpoint, index) => (
-              <li key={index}>
-                <CodeBlockCard
-                  title={endpoint.title}
-                  actionLink={endpoint.url}
-                  actionIcon={ExternalLinkIcon}
-                  description={endpoint.description}
-                  code={
-                    endpoint.data !== null && endpoint.data !== undefined
-                      ? formatJsonForDisplay(endpoint.data)
-                      : endpoint.curlRequest
-                  }
-                />
-              </li>
-            ))}
-          </ul>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 dark:text-gray-400">
+                Generating image...
+              </p>
+            </div>
+          ) : imageDataUrl ? (
+            <div className="flex items-center justify-center h-full">
+              <img
+                src={imageDataUrl}
+                alt="Generated image"
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+              Enter a brand URL and click Generate Image to create an image
+            </div>
+          )}
         </ResizablePanel>
       </ResizablePanelGroup>
     </main>
