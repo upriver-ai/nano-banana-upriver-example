@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ResizablePanel,
   ResizableHandle,
@@ -11,8 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SparklesIcon, ExternalLinkIcon } from "lucide-react";
-import { CodeBlockCard } from "@/components/code-block-card";
+import {
+  SparklesIcon,
+  ExternalLinkIcon,
+  CircleCheck,
+  Circle,
+  LoaderCircle,
+} from "lucide-react";
+import { CodeBlockCard, CodeBlockStatus } from "@/components/code-block-card";
 import {
   getBrandDetails,
   getProducts,
@@ -36,6 +42,56 @@ export default function Home() {
   const [audienceInsights, setAudienceInsights] = useState<unknown>(null);
   const [audienceInsightsCitations, setAudienceInsightsCitations] =
     useState<unknown>(null);
+  const [brandResearchStatus, setBrandResearchStatus] =
+    useState<CodeBlockStatus>(CodeBlockStatus.NOT_STARTED);
+  const [productsStatus, setProductsStatus] = useState<CodeBlockStatus>(
+    CodeBlockStatus.NOT_STARTED
+  );
+  const [audienceInsightsStatus, setAudienceInsightsStatus] =
+    useState<CodeBlockStatus>(CodeBlockStatus.NOT_STARTED);
+  const [audienceInsightsCitationsStatus, setAudienceInsightsCitationsStatus] =
+    useState<CodeBlockStatus>(CodeBlockStatus.NOT_STARTED);
+  const [brandProductDetailsComplete, setBrandProductDetailsComplete] =
+    useState(false);
+  const [audienceInsightsComplete, setAudienceInsightsComplete] =
+    useState(false);
+  const [promptBuilt, setPromptBuilt] = useState(false);
+  const [imageGenerating, setImageGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!brandUrl.trim()) {
+      return;
+    }
+
+    const brandResearchDone =
+      brandResearchStatus === CodeBlockStatus.SUCCESS ||
+      brandResearchStatus === CodeBlockStatus.ERROR;
+    const productsDone =
+      productsStatus === CodeBlockStatus.SUCCESS ||
+      productsStatus === CodeBlockStatus.ERROR;
+
+    if (brandResearchDone && productsDone) {
+      setBrandProductDetailsComplete(true);
+    }
+
+    const audienceInsightsDone =
+      audienceInsightsStatus === CodeBlockStatus.SUCCESS ||
+      audienceInsightsStatus === CodeBlockStatus.ERROR;
+    const citationsDone =
+      audienceInsightsCitationsStatus === CodeBlockStatus.SUCCESS ||
+      audienceInsightsCitationsStatus === CodeBlockStatus.ERROR ||
+      audienceInsightsCitationsStatus === CodeBlockStatus.NOT_STARTED;
+
+    if (audienceInsightsDone && citationsDone) {
+      setAudienceInsightsComplete(true);
+    }
+  }, [
+    brandUrl,
+    brandResearchStatus,
+    productsStatus,
+    audienceInsightsStatus,
+    audienceInsightsCitationsStatus,
+  ]);
 
   const formatJsonForDisplay = (data: unknown): string => {
     return JSON.stringify(data, null, 2);
@@ -101,6 +157,14 @@ export default function Home() {
     setProducts(null);
     setAudienceInsights(null);
     setAudienceInsightsCitations(null);
+    setBrandResearchStatus(CodeBlockStatus.NOT_STARTED);
+    setProductsStatus(CodeBlockStatus.NOT_STARTED);
+    setAudienceInsightsStatus(CodeBlockStatus.NOT_STARTED);
+    setAudienceInsightsCitationsStatus(CodeBlockStatus.NOT_STARTED);
+    setBrandProductDetailsComplete(false);
+    setAudienceInsightsComplete(false);
+    setPromptBuilt(false);
+    setImageGenerating(false);
 
     try {
       let brandResearchData: unknown = null;
@@ -111,29 +175,52 @@ export default function Home() {
       if (brandUrl.trim()) {
         const brandUrlValue = brandUrl.trim();
 
+        setBrandResearchStatus(CodeBlockStatus.LOADING);
+        setProductsStatus(CodeBlockStatus.LOADING);
+
         const [brandResearchRes, productsRes] = await Promise.all([
-          getBrandDetails({ brand_url: brandUrlValue }).catch((err) => {
-            console.warn(
-              "Brand research unavailable:",
-              err instanceof Error ? err.message : "Unknown error"
-            );
-            return {
-              error:
-                err instanceof Error
-                  ? err.message
-                  : "Failed to fetch brand research",
-            };
-          }),
-          getProducts({ brand_url: brandUrlValue }).catch((err) => {
-            console.warn(
-              "Products unavailable:",
-              err instanceof Error ? err.message : "Unknown error"
-            );
-            return {
-              error:
-                err instanceof Error ? err.message : "Failed to fetch products",
-            };
-          }),
+          getBrandDetails({ brand_url: brandUrlValue })
+            .then((data) => {
+              setBrandResearchStatus(CodeBlockStatus.SUCCESS);
+              setBrandResearch(data);
+              return data;
+            })
+            .catch((err) => {
+              console.warn(
+                "Brand research unavailable:",
+                err instanceof Error ? err.message : "Unknown error"
+              );
+              setBrandResearchStatus(CodeBlockStatus.ERROR);
+              const errorData = {
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to fetch brand research",
+              };
+              setBrandResearch(errorData);
+              return errorData;
+            }),
+          getProducts({ brand_url: brandUrlValue })
+            .then((data) => {
+              setProductsStatus(CodeBlockStatus.SUCCESS);
+              setProducts(data);
+              return data;
+            })
+            .catch((err) => {
+              console.warn(
+                "Products unavailable:",
+                err instanceof Error ? err.message : "Unknown error"
+              );
+              setProductsStatus(CodeBlockStatus.ERROR);
+              const errorData = {
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to fetch products",
+              };
+              setProducts(errorData);
+              return errorData;
+            }),
         ]);
 
         brandResearchData = brandResearchRes;
@@ -145,20 +232,31 @@ export default function Home() {
           brief
         );
 
+        setAudienceInsightsStatus(CodeBlockStatus.LOADING);
+
         audienceInsightsData = await getAudienceInsights(
           audienceInsightsPayload
-        ).catch((err) => {
-          console.warn(
-            "Audience insights unavailable:",
-            err instanceof Error ? err.message : "Unknown error"
-          );
-          return {
-            error:
-              err instanceof Error
-                ? err.message
-                : "Failed to fetch audience insights",
-          };
-        });
+        )
+          .then((data) => {
+            setAudienceInsightsStatus(CodeBlockStatus.SUCCESS);
+            setAudienceInsights(data);
+            return data;
+          })
+          .catch((err) => {
+            console.warn(
+              "Audience insights unavailable:",
+              err instanceof Error ? err.message : "Unknown error"
+            );
+            setAudienceInsightsStatus(CodeBlockStatus.ERROR);
+            const errorData = {
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Failed to fetch audience insights",
+            };
+            setAudienceInsights(errorData);
+            return errorData;
+          });
 
         const continuationToken =
           audienceInsightsData &&
@@ -182,11 +280,15 @@ export default function Home() {
             continuationToken
           );
 
+          setAudienceInsightsCitationsStatus(CodeBlockStatus.LOADING);
+
           audienceInsightsCitationsData = await getInsightCitations({
             continuation_token: continuationToken,
           })
             .then((data) => {
               console.log("Citations data received:", data);
+              setAudienceInsightsCitationsStatus(CodeBlockStatus.SUCCESS);
+              setAudienceInsightsCitations(data);
               return data;
             })
             .catch((err) => {
@@ -194,12 +296,15 @@ export default function Home() {
                 "Audience insights citations unavailable:",
                 err instanceof Error ? err.message : "Unknown error"
               );
-              return {
+              setAudienceInsightsCitationsStatus(CodeBlockStatus.ERROR);
+              const errorData = {
                 error:
                   err instanceof Error
                     ? err.message
                     : "Failed to fetch citations",
               };
+              setAudienceInsightsCitations(errorData);
+              return errorData;
             });
         } else if (
           audienceInsightsData &&
@@ -208,6 +313,9 @@ export default function Home() {
         ) {
           console.warn("Audience insights failed, skipping citations");
         }
+      } else {
+        setBrandProductDetailsComplete(true);
+        setAudienceInsightsComplete(true);
       }
 
       const promptResult = await generateImagePrompt({
@@ -221,16 +329,12 @@ export default function Home() {
 
       console.log("Generated prompt result:", promptResult);
       console.log("Generated prompt:", promptResult.prompt);
+      setPromptBuilt(true);
 
+      setImageGenerating(true);
       const imageResult = await generateImage({ prompt: promptResult.prompt });
       setImageDataUrl(imageResult.dataUrl);
-
-      if (brandUrl.trim()) {
-        setBrandResearch(brandResearchData);
-        setProducts(productsData);
-        setAudienceInsights(audienceInsightsData);
-        setAudienceInsightsCitations(audienceInsightsCitationsData);
-      }
+      setImageGenerating(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -307,24 +411,38 @@ export default function Home() {
                   products,
                   audienceInsights,
                   audienceInsightsCitations,
-                }).map((endpoint, index) => (
-                  <li
-                    key={index}
-                    className="min-w-0"
-                  >
-                    <CodeBlockCard
-                      title={endpoint.title}
-                      actionLink={endpoint.url}
-                      actionIcon={ExternalLinkIcon}
-                      description={endpoint.description}
-                      code={
-                        endpoint.data !== null && endpoint.data !== undefined
-                          ? formatJsonForDisplay(endpoint.data)
-                          : endpoint.curlRequest
-                      }
-                    />
-                  </li>
-                ))}
+                }).map((endpoint, index) => {
+                  let status: CodeBlockStatus;
+                  if (index === 0) {
+                    status = brandResearchStatus;
+                  } else if (index === 1) {
+                    status = productsStatus;
+                  } else if (index === 2) {
+                    status = audienceInsightsStatus;
+                  } else {
+                    status = audienceInsightsCitationsStatus;
+                  }
+
+                  return (
+                    <li
+                      key={index}
+                      className="min-w-0"
+                    >
+                      <CodeBlockCard
+                        title={endpoint.title}
+                        actionLink={endpoint.url}
+                        actionIcon={ExternalLinkIcon}
+                        description={endpoint.description}
+                        code={
+                          endpoint.data !== null && endpoint.data !== undefined
+                            ? formatJsonForDisplay(endpoint.data)
+                            : endpoint.curlRequest
+                        }
+                        status={status}
+                      />
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </ScrollArea>
@@ -337,9 +455,72 @@ export default function Home() {
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500 dark:text-gray-400">
-                Generating image...
-              </p>
+              <div className="flex flex-col gap-4">
+                <div
+                  className={`flex items-center gap-3 ${
+                    !brandProductDetailsComplete ? "animate-pulse" : ""
+                  }`}
+                >
+                  {brandProductDetailsComplete ? (
+                    <CircleCheck className="size-5 text-green-500" />
+                  ) : (
+                    <LoaderCircle className="size-5 text-gray-400 animate-spin" />
+                  )}
+                  <span className="text-gray-300">
+                    Fetching brand & product details
+                  </span>
+                </div>
+                <div
+                  className={`flex items-center gap-3 ${
+                    brandProductDetailsComplete && !audienceInsightsComplete
+                      ? "animate-pulse"
+                      : ""
+                  }`}
+                >
+                  {audienceInsightsComplete ? (
+                    <CircleCheck className="size-5 text-green-500" />
+                  ) : brandProductDetailsComplete ? (
+                    <LoaderCircle className="size-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <Circle className="size-5 text-gray-600" />
+                  )}
+                  <span className="text-gray-300">
+                    Gathering audience insights
+                  </span>
+                </div>
+                <div
+                  className={`flex items-center gap-3 ${
+                    audienceInsightsComplete && !promptBuilt
+                      ? "animate-pulse"
+                      : ""
+                  }`}
+                >
+                  {promptBuilt ? (
+                    <CircleCheck className="size-5 text-green-500" />
+                  ) : audienceInsightsComplete ? (
+                    <LoaderCircle className="size-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <Circle className="size-5 text-gray-600" />
+                  )}
+                  <span className="text-gray-300">Building prompt</span>
+                </div>
+                <div
+                  className={`flex items-center gap-3 ${
+                    promptBuilt && imageGenerating ? "animate-pulse" : ""
+                  }`}
+                >
+                  {!promptBuilt ? (
+                    <Circle className="size-5 text-gray-600" />
+                  ) : imageGenerating ? (
+                    <LoaderCircle className="size-5 text-gray-400 animate-spin" />
+                  ) : imageDataUrl ? (
+                    <CircleCheck className="size-5 text-green-500" />
+                  ) : (
+                    <Circle className="size-5 text-gray-600" />
+                  )}
+                  <span className="text-gray-300">Generating image</span>
+                </div>
+              </div>
             </div>
           ) : imageDataUrl ? (
             <div className="flex items-center justify-center h-full">
