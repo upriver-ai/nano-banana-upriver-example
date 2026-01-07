@@ -16,9 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
-  brandUrl: z.string().min(1, {
-    message: "Brand URL is required.",
-  }),
+  brandUrl: z.url(),
   brief: z.string().optional(),
 });
 
