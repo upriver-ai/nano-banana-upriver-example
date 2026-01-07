@@ -12,14 +12,80 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SparklesIcon, ExternalLinkIcon } from "lucide-react";
 import { CodeBlockCard } from "@/components/code-block-card";
+import {
+  getBrandDetails,
+  getProducts,
+  getAudienceInsights,
+  getInsightCitations,
+} from "@/services/upriver-client";
+import { generateImage } from "@/services/nano-banana-client";
+import { getApiEndpoints } from "@/lib/api-endpoints";
 
 const BASE_DOCS_URL = "https://docs.upriver.ai/";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
+  const [brandUrl, setBrandUrl] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [brandResearch, setBrandResearch] = useState<unknown>(null);
+  const [products, setProducts] = useState<unknown>(null);
+  const [audienceInsights, setAudienceInsights] = useState<unknown>(null);
+  const [audienceInsightsCitations, setAudienceInsightsCitations] =
+    useState<unknown>(null);
+
+  const formatJsonForDisplay = (data: unknown): string => {
+    return JSON.stringify(data, null, 2);
+  };
+
+  const buildAudienceInsightsPayload = (
+    brandResearch: unknown,
+    brandUrl: string
+  ) => {
+    if (
+      !brandResearch ||
+      typeof brandResearch !== "object" ||
+      "error" in brandResearch ||
+      !("brand" in brandResearch)
+    ) {
+      return { brief: "a social media ad" };
+    }
+
+    const research = brandResearch as {
+      brand?: { voice?: string; values?: string[]; industry?: string };
+      industries?: string[];
+      audience?: { description?: string };
+    };
+
+    const payload: {
+      brief: string;
+      industries?: string[];
+      brand?: { voice?: string; values?: string[] };
+      audience?: { description?: string };
+    } = {
+      brief: "a social media ad",
+    };
+
+    if (research.brand) {
+      payload.brand = {
+        voice: research.brand.voice,
+        values: research.brand.values,
+      };
+    }
+
+    if (research.industries) {
+      payload.industries = research.industries;
+    } else if (research.brand?.industry) {
+      payload.industries = [research.brand.industry];
+    }
+
+    if (research.audience?.description) {
+      payload.audience = { description: research.audience.description };
+    }
+
+    return payload;
+  };
 
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
@@ -30,23 +96,98 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
     setImageDataUrl(null);
+    setBrandResearch(null);
+    setProducts(null);
+    setAudienceInsights(null);
+    setAudienceInsightsCitations(null);
 
     try {
-      const response = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt }),
-      });
+      const imagePromise = generateImage({ prompt });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate image");
+      let brandResearchData: unknown = null;
+      let productsData: unknown = null;
+      let audienceInsightsData: unknown = null;
+      let audienceInsightsCitationsData: unknown = null;
+
+      if (brandUrl.trim()) {
+        const brandUrlValue = brandUrl.trim();
+
+        const [brandResearchRes, productsRes] = await Promise.all([
+          getBrandDetails({ brand_url: brandUrlValue }).catch((err) => {
+            console.error("Brand research error:", err);
+            return { error: err.message };
+          }),
+          getProducts({ brand_url: brandUrlValue }).catch((err) => {
+            console.error("Products error:", err);
+            return { error: err.message };
+          }),
+        ]);
+
+        brandResearchData = brandResearchRes;
+        productsData = productsRes;
+
+        const audienceInsightsPayload = buildAudienceInsightsPayload(
+          brandResearchRes,
+          brandUrlValue
+        );
+
+        audienceInsightsData = await getAudienceInsights(
+          audienceInsightsPayload
+        ).catch((err) => {
+          console.error("Audience insights error:", err);
+          return { error: err.message };
+        });
+
+        const continuationToken =
+          audienceInsightsData &&
+          typeof audienceInsightsData === "object" &&
+          "meta" in audienceInsightsData &&
+          audienceInsightsData.meta &&
+          typeof audienceInsightsData.meta === "object" &&
+          "continuation_token" in audienceInsightsData.meta &&
+          audienceInsightsData.meta.continuation_token
+            ? (audienceInsightsData.meta.continuation_token as string)
+            : audienceInsightsData &&
+              typeof audienceInsightsData === "object" &&
+              "continuation_token" in audienceInsightsData &&
+              audienceInsightsData.continuation_token
+            ? (audienceInsightsData.continuation_token as string)
+            : null;
+
+        if (continuationToken) {
+          console.log(
+            "Fetching citations with continuation_token:",
+            continuationToken
+          );
+
+          audienceInsightsCitationsData = await getInsightCitations({
+            continuation_token: continuationToken,
+          })
+            .then((data) => {
+              console.log("Citations data received:", data);
+              return data;
+            })
+            .catch((err) => {
+              console.error("Audience insights citations error:", err);
+              return { error: err.message };
+            });
+        } else {
+          console.log(
+            "No continuation_token found in audience insights:",
+            audienceInsightsData
+          );
+        }
       }
 
-      const data = await response.json();
-      setImageDataUrl(data.dataUrl);
+      const imageResult = await imagePromise;
+      setImageDataUrl(imageResult.dataUrl);
+
+      if (brandUrl.trim()) {
+        setBrandResearch(brandResearchData);
+        setProducts(productsData);
+        setAudienceInsights(audienceInsightsData);
+        setAudienceInsightsCitations(audienceInsightsCitationsData);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -57,29 +198,45 @@ export default function Home() {
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-between bg-white dark:bg-black sm:items-start">
       <section className="flex flex-col gap-3 p-5 w-full">
-        <Label htmlFor="prompt">Image Prompt</Label>
-        <div className="grow flex flex-row gap-3 w-full">
-          <Input
-            id="prompt"
-            type="text"
-            placeholder="Create a picture of a futuristic banana with neon lights in a cyberpunk city."
-            className="flex grow"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !isLoading) {
-                handleGenerateImage();
-              }
-            }}
-          />
-          <Button
-            onClick={handleGenerateImage}
-            disabled={isLoading}
-          >
-            <SparklesIcon className="size-4" />
-            {isLoading ? "Generating..." : "Generate Image"}
-          </Button>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="prompt">Image Prompt</Label>
+            <Input
+              id="prompt"
+              type="text"
+              placeholder="Create a picture of a futuristic banana with neon lights in a cyberpunk city."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isLoading) {
+                  handleGenerateImage();
+                }
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="brandUrl">Brand URL</Label>
+            <Input
+              id="brandUrl"
+              type="text"
+              placeholder="https://acme.com"
+              value={brandUrl}
+              onChange={(e) => setBrandUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isLoading) {
+                  handleGenerateImage();
+                }
+              }}
+            />
+          </div>
         </div>
+        <Button
+          onClick={handleGenerateImage}
+          disabled={isLoading}
+        >
+          <SparklesIcon className="size-4" />
+          {isLoading ? "Generating..." : "Generate Image"}
+        </Button>
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         )}
@@ -90,7 +247,7 @@ export default function Home() {
         className="flex grow"
       >
         <ResizablePanel
-          defaultSize={75}
+          defaultSize={60}
           className="p-5"
           minSize={800}
         >
@@ -101,7 +258,7 @@ export default function Home() {
               </p>
             </div>
           ) : imageDataUrl ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-start justify-center h-full">
               <img
                 src={imageDataUrl}
                 alt="Generated image"
@@ -116,68 +273,31 @@ export default function Home() {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel
-          defaultSize={25}
+          defaultSize={40}
           minSize={400}
           className="p-5"
         >
           <ul className="flex flex-col gap-3 list-none p-0 m-0">
-            <li>
-              <CodeBlockCard
-                title="/brand/research"
-                actionLink={`${BASE_DOCS_URL}/api-reference/brands/brand-details`}
-                actionIcon={ExternalLinkIcon}
-                description="Get the details of a brand"
-                code={`curl -X GET "https://api.upriver.ai/v2/brand/research" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "brand": "acme.com",
-    "include_analytics": true,
-    "include_products": true,
-    "include_audience": true,
-    "date_range": {
-      "start": "2024-01-01",
-      "end": "2024-12-31"
-    }
-  }'`}
-              />
-            </li>
-            <li>
-              <CodeBlockCard
-                title="/brand/products"
-                actionLink={`${BASE_DOCS_URL}/api-reference/products/products`}
-                actionIcon={ExternalLinkIcon}
-                description="Get the products of a brand"
-                code={`curl -X GET "https://api.upriver.ai/v2/brand/products" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "brand": "acme.com",
-    "limit": 50,
-    "offset": 0,
-    "sort_by": "popularity",
-    "include_metadata": true
-  }'`}
-              />
-            </li>
-            <li>
-              <CodeBlockCard
-                title="/audience_insights"
-                actionLink={`${BASE_DOCS_URL}/api-reference/audience/insights`}
-                actionIcon={ExternalLinkIcon}
-                description="Get the audience insights of a brand"
-                code={`curl -X GET "https://api.upriver.ai/v2/audience_insights" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "brand": "acme.com",
-    "demographics": true,
-    "interests": true,
-    "behaviors": true,
-    "geographic": true
-  }'`}
-              />
-            </li>
+            {getApiEndpoints(BASE_DOCS_URL, {
+              brandResearch,
+              products,
+              audienceInsights,
+              audienceInsightsCitations,
+            }).map((endpoint, index) => (
+              <li key={index}>
+                <CodeBlockCard
+                  title={endpoint.title}
+                  actionLink={endpoint.url}
+                  actionIcon={ExternalLinkIcon}
+                  description={endpoint.description}
+                  code={
+                    endpoint.data !== null && endpoint.data !== undefined
+                      ? formatJsonForDisplay(endpoint.data)
+                      : endpoint.curlRequest
+                  }
+                />
+              </li>
+            ))}
           </ul>
         </ResizablePanel>
       </ResizablePanelGroup>

@@ -28,7 +28,7 @@ export async function generateImage(
     contents: options.prompt,
   });
 
-  for (const part of response.candidates[0].content.parts) {
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
       const mimeType = part.inlineData.mimeType || "image/png";
       const dataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
@@ -42,4 +42,3 @@ export async function generateImage(
 
   throw new Error("No image data found in response");
 }
-
