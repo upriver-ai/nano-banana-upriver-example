@@ -24,7 +24,7 @@ import { getApiEndpoints } from "@/lib/api-endpoints";
 const BASE_DOCS_URL = "https://docs.upriver.ai/";
 
 export default function Home() {
-  const [prompt, setPrompt] = useState("");
+  const [brief, setBrief] = useState("");
   const [brandUrl, setBrandUrl] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,15 +41,19 @@ export default function Home() {
 
   const buildAudienceInsightsPayload = (
     brandResearch: unknown,
-    brandUrl: string
+    brandUrl: string,
+    briefValue: string
   ) => {
+    const defaultBrief = "a campaign that raises brand awareness";
+    const briefToUse = briefValue.trim() || defaultBrief;
+
     if (
       !brandResearch ||
       typeof brandResearch !== "object" ||
       "error" in brandResearch ||
       !("brand" in brandResearch)
     ) {
-      return { brief: "a social media ad" };
+      return { brief: briefToUse };
     }
 
     const research = brandResearch as {
@@ -64,7 +68,7 @@ export default function Home() {
       brand?: { voice?: string; values?: string[] };
       audience?: { description?: string };
     } = {
-      brief: "a social media ad",
+      brief: briefToUse,
     };
 
     if (research.brand) {
@@ -88,11 +92,6 @@ export default function Home() {
   };
 
   const handleGenerateImage = async () => {
-    if (!prompt.trim()) {
-      setError("Please enter a prompt");
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setImageDataUrl(null);
@@ -102,7 +101,7 @@ export default function Home() {
     setAudienceInsightsCitations(null);
 
     try {
-      const imagePromise = generateImage({ prompt });
+      const imagePromise = generateImage({ prompt: brief });
 
       let brandResearchData: unknown = null;
       let productsData: unknown = null;
@@ -128,7 +127,8 @@ export default function Home() {
 
         const audienceInsightsPayload = buildAudienceInsightsPayload(
           brandResearchRes,
-          brandUrlValue
+          brandUrlValue,
+          brief
         );
 
         audienceInsightsData = await getAudienceInsights(
@@ -197,79 +197,84 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-between bg-white dark:bg-black sm:items-start">
-      <section className="flex flex-col gap-3 p-5 w-full">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="prompt">Image Prompt</Label>
-            <Input
-              id="prompt"
-              type="text"
-              placeholder="Create a picture of a futuristic banana with neon lights in a cyberpunk city."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isLoading) {
-                  handleGenerateImage();
-                }
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="brandUrl">Brand URL</Label>
-            <Input
-              id="brandUrl"
-              type="text"
-              placeholder="https://acme.com"
-              value={brandUrl}
-              onChange={(e) => setBrandUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isLoading) {
-                  handleGenerateImage();
-                }
-              }}
-            />
-          </div>
-        </div>
-        <Button
-          onClick={handleGenerateImage}
-          disabled={isLoading}
-        >
-          <SparklesIcon className="size-4" />
-          {isLoading ? "Generating..." : "Generate Image"}
-        </Button>
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-      </section>
-      <Separator />
       <ResizablePanelGroup
         direction="horizontal"
         className="flex grow"
       >
         <ResizablePanel
           defaultSize={60}
-          className="p-5"
           minSize={800}
+          className="flex flex-col"
         >
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500 dark:text-gray-400">
-                Generating image...
-              </p>
+          <section className="flex flex-col gap-3 w-full p-5">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="brandUrl">Brand URL</Label>
+                <Input
+                  id="brandUrl"
+                  type="text"
+                  placeholder="https://acme.com"
+                  value={brandUrl}
+                  onChange={(e) => setBrandUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoading) {
+                      handleGenerateImage();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="brief">
+                  Additional Instructions (optional)
+                </Label>
+                <Input
+                  id="brief"
+                  type="text"
+                  placeholder="Generate an image that's on-brand and aligned with their audience"
+                  value={brief}
+                  onChange={(e) => setBrief(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoading) {
+                      handleGenerateImage();
+                    }
+                  }}
+                />
+              </div>
             </div>
-          ) : imageDataUrl ? (
-            <div className="flex items-start justify-center h-full">
-              <img
-                src={imageDataUrl}
-                alt="Generated image"
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              Enter a prompt and click Generate Image to create an image
-            </div>
-          )}
+            <Button
+              onClick={handleGenerateImage}
+              disabled={isLoading}
+              className="self-start"
+            >
+              <SparklesIcon className="size-4" />
+              {isLoading ? "Generating..." : "Generate Image"}
+            </Button>
+            {error && (
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            )}
+          </section>
+          <Separator />
+          <section className="flex flex-col grow gap-3 w-full p-5">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Generating image...
+                </p>
+              </div>
+            ) : imageDataUrl ? (
+              <div className="flex items-start justify-center h-full">
+                <img
+                  src={imageDataUrl}
+                  alt="Generated image"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                Enter a brand URL and click Generate Image to create an image
+              </div>
+            )}
+          </section>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel
