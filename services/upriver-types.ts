@@ -70,7 +70,6 @@ export interface ProductInfo {
 }
 
 export interface ProductsResponse {
-  brand_name: string;
   brand_url: string;
   products: ProductInfo[];
   next_cursor: string | null;
@@ -183,4 +182,3 @@ export interface InsightCitationsResponse {
   citations: Citation[];
   continuation_token: string | null;
 }
-

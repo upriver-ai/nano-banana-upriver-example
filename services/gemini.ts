@@ -105,7 +105,6 @@ Guidelines for the prompt:
 
   if (products && !("error" in products) && products.products) {
     prompt += `\n## Products\n`;
-    prompt += `• Brand: ${products.brand_name || "N/A"}\n`;
     if (products.products.length > 0) {
       prompt += `• Product Categories:\n`;
       products.products.slice(0, 10).forEach((product) => {
