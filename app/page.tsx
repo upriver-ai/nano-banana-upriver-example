@@ -14,8 +14,11 @@ import { PromptForm } from "@/components/prompt-form";
 import { getApiEndpoints } from "@/lib/api-endpoints";
 import { formatJsonForDisplay } from "@/lib/utils";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
+import Image from "next/image";
+import Link from "next/link";
 
-const BASE_DOCS_URL = "https://docs.upriver.ai/";
+const UPRIVER_URL = "https://upriver.ai";
+const UPRIVER_DOCS_URL = "https://docs.upriver.ai/";
 
 export default function Home() {
   const {
@@ -50,8 +53,26 @@ export default function Home() {
         >
           <ScrollArea className="h-full w-full">
             <div className="flex flex-col min-w-0">
-              {/* prompt builder form */}
-              <section className="w-full p-5 min-w-0">
+              <section className="flex flex-col gap-5 w-full p-5 min-w-0">
+                {/* header */}
+                <div className="flex flex-row items-center gap-2 w-full">
+                  <Link
+                    href={UPRIVER_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Image
+                      src="/icon.svg"
+                      alt="Upriver"
+                      width={28}
+                      height={28}
+                    />
+                  </Link>
+                  <h1 className="text-2xl font-bold">
+                    Upriver x Nano Banana Example
+                  </h1>
+                </div>
+                {/* prompt builder form */}
                 <PromptForm
                   onSubmit={generateImage}
                   isLoading={isLoading}
@@ -60,8 +81,15 @@ export default function Home() {
               </section>
               <Separator />
               {/* code block cards */}
-              <ul className="flex flex-col gap-3 list-none p-5 min-w-0">
-                {getApiEndpoints(BASE_DOCS_URL, {
+              <ul className="flex flex-col gap-5 list-none p-5 min-w-0">
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-lg font-bold">Upriver API</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    The following Upriver API endpoints are used to power the
+                    image generation:
+                  </p>
+                </div>
+                {getApiEndpoints(UPRIVER_DOCS_URL, {
                   brandResearch,
                   products,
                   audienceInsights,
@@ -108,6 +136,7 @@ export default function Home() {
           minSize={600}
           className="p-5 bg-black"
         >
+          {/* image output section */}
           {isLoading ? (
             <LoaderState
               brandProductDetailsComplete={brandProductDetailsComplete}
