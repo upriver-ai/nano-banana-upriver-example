@@ -333,7 +333,7 @@ export default function Home() {
         <ResizablePanel
           defaultSize={60}
           minSize={600}
-          className="p-5"
+          className="p-5 bg-black"
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -351,7 +351,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              Enter a brand URL and click Generate Image to create an image
+              Enter a brand URL and click "Generate Image" to create an image
             </div>
           )}
         </ResizablePanel>
