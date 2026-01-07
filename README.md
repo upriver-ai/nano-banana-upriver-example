@@ -9,11 +9,11 @@ A working example of an image generation workflow combining [Upriver](https://up
 
 ## Built With
 
-- [Gemini](https://ai.google.dev/) - Google's AI model for prompt generation
-- [Nano Banana](https://ai.google.dev/models/gemini) - Google's Gemini image generation model
-- [Next.js](https://nextjs.org) - React framework
-- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
-- [shadcn/ui](https://ui.shadcn.com) - UI component library
+- [Gemini](https://ai.google.dev/)
+- [Nano Banana](https://ai.google.dev/models/gemini)
+- [Next.js](https://nextjs.org)
+- [Tailwind CSS](https://tailwindcss.com)
+- [shadcn/ui](https://ui.shadcn.com)
 
 ## Getting Started
 
