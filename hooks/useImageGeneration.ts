@@ -7,9 +7,9 @@ import {
   getProducts,
   getAudienceInsights,
   getInsightCitations,
-} from "@/services/upriver-client";
-import { generateImage } from "@/services/nano-banana-client";
-import { generateImagePrompt } from "@/services/gemini-client";
+} from "@/services/upriver";
+import { generateImage } from "@/services/nano-banana";
+import { generateImagePrompt } from "@/services/gemini";
 import {
   buildAudienceInsightsPayload,
   extractContinuationToken,

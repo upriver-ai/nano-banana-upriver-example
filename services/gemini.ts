@@ -1,3 +1,5 @@
+"use server";
+
 import { GoogleGenAI } from "@google/genai";
 import type {
   BrandResearchResponse,
