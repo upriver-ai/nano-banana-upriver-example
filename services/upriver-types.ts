@@ -98,6 +98,11 @@ export interface AudienceInsightsOptions {
   industries?: string[];
   brand?: AudienceInsightsBrand;
   product?: AudienceInsightsProduct;
+  products?: Array<{
+    category: string;
+    name: string;
+    description: string;
+  }>;
   audience?: AudienceInsightsAudience;
   citations_mode?: "async" | "sync" | "none";
   continuation_token?: string | null;
