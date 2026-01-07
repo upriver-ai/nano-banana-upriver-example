@@ -1,3 +1,5 @@
+"use server";
+
 import { GoogleGenAI } from "@google/genai";
 
 const DEFAULT_MODEL = "gemini-3-pro-image-preview";
