@@ -56,4 +56,4 @@ To learn more about Upriver, take a look at the following resources:
 - [Upriver Website](https://upriver.ai?ref=banana)
 - [Upriver Documentation](https://docs.upriver.ai?ref=banana)
 
-To get an API key, email us at [support@upriver.ai](mailto:support@upriver.ai)
+To get an Upriver API key, email [support@upriver.ai](mailto:support@upriver.ai).
