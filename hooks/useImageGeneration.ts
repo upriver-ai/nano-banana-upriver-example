@@ -15,17 +15,25 @@ import {
   extractContinuationToken,
 } from "@/lib/workflow-helpers";
 import type { PromptFormValues } from "@/components/prompt-form";
+import type {
+  BrandResearchResponse,
+  ProductsResponse,
+  AudienceInsightsResponse,
+  InsightCitationsResponse,
+} from "@/services/upriver-types";
 
 export function useImageGeneration() {
   const [brandUrl, setBrandUrl] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [brandResearch, setBrandResearch] = useState<unknown>(null);
-  const [products, setProducts] = useState<unknown>(null);
-  const [audienceInsights, setAudienceInsights] = useState<unknown>(null);
+  const [brandResearch, setBrandResearch] =
+    useState<BrandResearchResponse | null>(null);
+  const [products, setProducts] = useState<ProductsResponse | null>(null);
+  const [audienceInsights, setAudienceInsights] =
+    useState<AudienceInsightsResponse | null>(null);
   const [audienceInsightsCitations, setAudienceInsightsCitations] =
-    useState<unknown>(null);
+    useState<InsightCitationsResponse | null>(null);
 
   const [brandResearchStatus, setBrandResearchStatus] =
     useState<CodeBlockStatus>(CodeBlockStatus.NOT_STARTED);
@@ -102,98 +110,79 @@ export function useImageGeneration() {
       setImageGenerating(false);
 
       try {
-        let brandResearchData: unknown = null;
-        let productsData: unknown = null;
-        let audienceInsightsData: unknown = null;
-        let audienceInsightsCitationsData: unknown = null;
+        let brandResearchData: BrandResearchResponse | null = null;
+        let productsData: ProductsResponse | null = null;
+        let audienceInsightsData: AudienceInsightsResponse | null = null;
+        let audienceInsightsCitationsData: InsightCitationsResponse | null =
+          null;
 
         if (brandUrlValue) {
           setBrandResearchStatus(CodeBlockStatus.LOADING);
           setProductsStatus(CodeBlockStatus.LOADING);
 
-          const [brandResearchRes, productsRes] = await Promise.all([
-            getBrandDetails({ brand_url: brandUrlValue })
-              .then((data) => {
-                setBrandResearchStatus(CodeBlockStatus.SUCCESS);
-                setBrandResearch(data);
-                return data;
-              })
-              .catch((err) => {
-                console.warn(
-                  "Brand research unavailable:",
-                  err instanceof Error ? err.message : "Unknown error"
-                );
-                setBrandResearchStatus(CodeBlockStatus.ERROR);
-                const errorData = {
-                  error:
-                    err instanceof Error
-                      ? err.message
-                      : "Failed to fetch brand research",
-                };
-                setBrandResearch(errorData);
-                return errorData;
-              }),
-            getProducts({ brand_url: brandUrlValue })
-              .then((data) => {
-                setProductsStatus(CodeBlockStatus.SUCCESS);
-                setProducts(data);
-                return data;
-              })
-              .catch((err) => {
-                console.warn(
-                  "Products unavailable:",
-                  err instanceof Error ? err.message : "Unknown error"
-                );
-                setProductsStatus(CodeBlockStatus.ERROR);
-                const errorData = {
-                  error:
-                    err instanceof Error
-                      ? err.message
-                      : "Failed to fetch products",
-                };
-                setProducts(errorData);
-                return errorData;
-              }),
+          const [brandResearchRes, productsRes] = await Promise.allSettled([
+            getBrandDetails({ brand_url: brandUrlValue }),
+            getProducts({ brand_url: brandUrlValue }),
           ]);
 
-          brandResearchData = brandResearchRes;
-          productsData = productsRes;
+          brandResearchData =
+            brandResearchRes.status === "fulfilled"
+              ? brandResearchRes.value
+              : null;
+          if (brandResearchData) {
+            setBrandResearchStatus(CodeBlockStatus.SUCCESS);
+            setBrandResearch(brandResearchData);
+          } else {
+            console.warn(
+              "Brand research unavailable:",
+              brandResearchRes.status === "rejected" &&
+                brandResearchRes.reason instanceof Error
+                ? brandResearchRes.reason.message
+                : "Unknown error"
+            );
+            setBrandResearchStatus(CodeBlockStatus.ERROR);
+          }
+
+          productsData =
+            productsRes.status === "fulfilled" ? productsRes.value : null;
+          if (productsData) {
+            setProductsStatus(CodeBlockStatus.SUCCESS);
+            setProducts(productsData);
+          } else {
+            console.warn(
+              "Products unavailable:",
+              productsRes.status === "rejected" &&
+                productsRes.reason instanceof Error
+                ? productsRes.reason.message
+                : "Unknown error"
+            );
+            setProductsStatus(CodeBlockStatus.ERROR);
+          }
 
           const audienceInsightsPayload = buildAudienceInsightsPayload(
-            brandResearchRes,
-            productsRes,
+            brandResearchData,
+            productsData,
             briefValue
           );
 
           setAudienceInsightsStatus(CodeBlockStatus.LOADING);
 
-          audienceInsightsData = await getAudienceInsights(
-            audienceInsightsPayload
-          )
-            .then((data) => {
-              setAudienceInsightsStatus(CodeBlockStatus.SUCCESS);
-              setAudienceInsights(data);
-              return data;
-            })
-            .catch((err) => {
-              console.warn(
-                "Audience insights unavailable:",
-                err instanceof Error ? err.message : "Unknown error"
-              );
-              setAudienceInsightsStatus(CodeBlockStatus.ERROR);
-              const errorData = {
-                error:
-                  err instanceof Error
-                    ? err.message
-                    : "Failed to fetch audience insights",
-              };
-              setAudienceInsights(errorData);
-              return errorData;
-            });
+          try {
+            audienceInsightsData = await getAudienceInsights(
+              audienceInsightsPayload
+            );
+            setAudienceInsightsStatus(CodeBlockStatus.SUCCESS);
+            setAudienceInsights(audienceInsightsData);
+          } catch (err) {
+            console.warn(
+              "Audience insights unavailable:",
+              err instanceof Error ? err.message : "Unknown error"
+            );
+            setAudienceInsightsStatus(CodeBlockStatus.ERROR);
+          }
 
-          const continuationToken = extractContinuationToken(
-            audienceInsightsData
-          );
+          const continuationToken =
+            extractContinuationToken(audienceInsightsData);
 
           if (continuationToken) {
             console.log(
@@ -203,36 +192,23 @@ export function useImageGeneration() {
 
             setAudienceInsightsCitationsStatus(CodeBlockStatus.LOADING);
 
-            audienceInsightsCitationsData = await getInsightCitations({
-              continuation_token: continuationToken,
-            })
-              .then((data) => {
-                console.log("Citations data received:", data);
-                setAudienceInsightsCitationsStatus(CodeBlockStatus.SUCCESS);
-                setAudienceInsightsCitations(data);
-                return data;
-              })
-              .catch((err) => {
-                console.warn(
-                  "Audience insights citations unavailable:",
-                  err instanceof Error ? err.message : "Unknown error"
-                );
-                setAudienceInsightsCitationsStatus(CodeBlockStatus.ERROR);
-                const errorData = {
-                  error:
-                    err instanceof Error
-                      ? err.message
-                      : "Failed to fetch citations",
-                };
-                setAudienceInsightsCitations(errorData);
-                return errorData;
+            try {
+              audienceInsightsCitationsData = await getInsightCitations({
+                continuation_token: continuationToken,
               });
-          } else if (
-            audienceInsightsData &&
-            typeof audienceInsightsData === "object" &&
-            "error" in audienceInsightsData
-          ) {
-            console.warn("Audience insights failed, skipping citations");
+              console.log(
+                "Citations data received:",
+                audienceInsightsCitationsData
+              );
+              setAudienceInsightsCitationsStatus(CodeBlockStatus.SUCCESS);
+              setAudienceInsightsCitations(audienceInsightsCitationsData);
+            } catch (err) {
+              console.warn(
+                "Audience insights citations unavailable:",
+                err instanceof Error ? err.message : "Unknown error"
+              );
+              setAudienceInsightsCitationsStatus(CodeBlockStatus.ERROR);
+            }
           }
         } else {
           setBrandProductDetailsComplete(true);
@@ -242,10 +218,10 @@ export function useImageGeneration() {
         const promptResult = await generateImagePrompt({
           brandUrl: brandUrlValue || "",
           additionalInstructions: briefValue.trim() || undefined,
-          brandResearch: brandResearchData as any,
-          products: productsData as any,
-          audienceInsights: audienceInsightsData as any,
-          audienceInsightsCitations: audienceInsightsCitationsData as any,
+          brandResearch: brandResearchData,
+          products: productsData,
+          audienceInsights: audienceInsightsData,
+          audienceInsightsCitations: audienceInsightsCitationsData,
         });
         setPromptBuilt(true);
 
@@ -284,4 +260,3 @@ export function useImageGeneration() {
     generateImage: handleGenerateImage,
   };
 }
-

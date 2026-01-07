@@ -1,13 +1,13 @@
 import type {
+  AudienceInsightsOptions,
+  AudienceInsightsResponse,
   BrandResearchResponse,
   ProductsResponse,
-  AudienceInsightsResponse,
-  AudienceInsightsOptions,
 } from "@/services/upriver-types";
 
 export function buildAudienceInsightsPayload(
-  brandResearch: unknown,
-  products: unknown,
+  brandResearch: BrandResearchResponse | null,
+  products: ProductsResponse | null,
   briefValue: string
 ): AudienceInsightsOptions {
   const defaultBrief = "a campaign that raises brand awareness";
@@ -17,59 +17,44 @@ export function buildAudienceInsightsPayload(
     brief: briefToUse,
   };
 
-  if (
-    brandResearch &&
-    typeof brandResearch === "object" &&
-    !("error" in brandResearch) &&
-    "brand" in brandResearch
-  ) {
-    const research = brandResearch as BrandResearchResponse;
-
-    if (research.brand) {
+  if (brandResearch) {
+    if (brandResearch.brand) {
       payload.brand = {
-        voice: research.brand.voice,
-        values: research.brand.values,
+        voice: brandResearch.brand.voice,
+        values: brandResearch.brand.values,
       };
     }
 
-    if (research.industries) {
-      payload.industries = research.industries;
-    } else if (research.brand?.industry) {
-      payload.industries = [research.brand.industry];
+    if (brandResearch.industries) {
+      payload.industries = brandResearch.industries;
+    } else if (brandResearch.brand?.industry) {
+      payload.industries = [brandResearch.brand.industry];
     }
 
-    if (research.audience?.description) {
-      payload.audience = { description: research.audience.description };
+    if (brandResearch.audience?.description) {
+      payload.audience = { description: brandResearch.audience.description };
     }
   }
 
-  if (
-    products &&
-    typeof products === "object" &&
-    !("error" in products) &&
-    "products" in products
-  ) {
-    const productsData = products as ProductsResponse;
-    if (productsData.products && productsData.products.length > 0) {
-      (payload as any).products = productsData.products.map((product) => ({
-        category: product.category,
-        name: product.name,
-        description: product.description,
-      }));
-    }
+  if (products && products.products && products.products.length > 0) {
+    payload.products = products.products.map((product) => ({
+      category: product.category,
+      name: product.name,
+      description: product.description,
+    }));
   }
 
   return payload;
 }
 
 export function extractContinuationToken(
-  audienceInsightsData: unknown
+  audienceInsightsData: AudienceInsightsResponse | null
 ): string | null {
-  if (!audienceInsightsData || typeof audienceInsightsData !== "object") {
+  if (!audienceInsightsData) {
     return null;
   }
 
-  const data = audienceInsightsData as AudienceInsightsResponse;
+  const data = audienceInsightsData;
 
   if (
     data.meta &&
@@ -86,4 +71,3 @@ export function extractContinuationToken(
 
   return null;
 }
-
