@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ResizablePanel,
   ResizableHandle,
@@ -15,22 +16,73 @@ import { CodeBlockCard } from "@/components/code-block-card";
 const BASE_DOCS_URL = "https://docs.upriver.ai/";
 
 export default function Home() {
+  const [prompt, setPrompt] = useState("");
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerateImage = async () => {
+    if (!prompt.trim()) {
+      setError("Please enter a prompt");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setImageDataUrl(null);
+
+    try {
+      const response = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate image");
+      }
+
+      const data = await response.json();
+      setImageDataUrl(data.dataUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-between bg-white dark:bg-black sm:items-start">
       <section className="flex flex-col gap-3 p-5 w-full">
-        <Label htmlFor="brand">Brand</Label>
+        <Label htmlFor="prompt">Image Prompt</Label>
         <div className="grow flex flex-row gap-3 w-full">
           <Input
-            id="brand"
-            type="url"
-            placeholder="acme.com"
+            id="prompt"
+            type="text"
+            placeholder="Create a picture of a futuristic banana with neon lights in a cyberpunk city."
             className="flex grow"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !isLoading) {
+                handleGenerateImage();
+              }
+            }}
           />
-          <Button>
+          <Button
+            onClick={handleGenerateImage}
+            disabled={isLoading}
+          >
             <SparklesIcon className="size-4" />
-            Generate Image
+            {isLoading ? "Generating..." : "Generate Image"}
           </Button>
         </div>
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
       </section>
       <Separator />
       <ResizablePanelGroup
@@ -42,7 +94,25 @@ export default function Home() {
           className="p-5"
           minSize={800}
         >
-          This is the left panel
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 dark:text-gray-400">
+                Generating image...
+              </p>
+            </div>
+          ) : imageDataUrl ? (
+            <div className="flex items-center justify-center h-full">
+              <img
+                src={imageDataUrl}
+                alt="Generated image"
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+              Enter a prompt and click Generate Image to create an image
+            </div>
+          )}
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel
