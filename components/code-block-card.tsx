@@ -32,7 +32,7 @@ export function CodeBlockCard({
   children,
 }: CodeBlockCardProps) {
   return (
-    <Card>
+    <Card className="w-full min-w-0 max-w-full">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
@@ -54,12 +54,12 @@ export function CodeBlockCard({
           </CardAction>
         )}
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 min-w-0">
         {code ? (
-          <div className="h-64">
+          <div className="h-64 min-w-0 w-full">
             <ScrollArea className="h-full w-full">
-              <pre className="m-0 p-4 text-sm font-mono bg-muted dark:bg-muted/50">
-                <code className="block whitespace-pre-wrap wrap-break-word text-green-700 dark:text-green-300">
+              <pre className="m-0 p-4 text-sm font-mono bg-muted dark:bg-muted/50 min-w-0 max-w-full w-full break-all whitespace-pre-wrap">
+                <code className="block text-green-700 dark:text-green-300 min-w-0 break-all">
                   {code}
                 </code>
               </pre>
