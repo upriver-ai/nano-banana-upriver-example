@@ -57,7 +57,7 @@ export default function Home() {
                 {/* header */}
                 <div className="flex flex-row items-center gap-2 w-full">
                   <Link
-                    href={UPRIVER_URL}
+                    href={`${UPRIVER_URL}?ref=banana`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
