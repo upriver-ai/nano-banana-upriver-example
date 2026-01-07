@@ -48,7 +48,7 @@ export default function Home() {
       >
         <ResizablePanel
           defaultSize={40}
-          minSize={400}
+          minSize="30%"
           className="flex flex-col h-full"
         >
           <ScrollArea className="h-full w-full">
@@ -133,7 +133,7 @@ export default function Home() {
         <ResizableHandle withHandle />
         <ResizablePanel
           defaultSize={60}
-          minSize={600}
+          minSize="40%"
           className="p-5 bg-black"
         >
           {/* image output section */}
