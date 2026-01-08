@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Upriver / Nano Banana Example",
+  title: "Upriver x Nano Banana Example",
   description:
     "A working example of an image content generation application using Upriver and Nano Banana.",
 };
