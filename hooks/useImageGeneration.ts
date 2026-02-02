@@ -14,6 +14,7 @@ import {
   buildAudienceInsightsPayload,
   extractContinuationToken,
 } from "@/lib/workflow-helpers";
+import { getStoredApiKeys } from "@/lib/api-keys";
 import type { PromptFormValues } from "@/components/prompt-form";
 import type {
   BrandResearchResponse,
@@ -110,6 +111,8 @@ export function useImageGeneration() {
       setImageGenerating(false);
 
       try {
+        const { upriverApiKey, geminiApiKey } = getStoredApiKeys();
+
         let brandResearchData: BrandResearchResponse | null = null;
         let productsData: ProductsResponse | null = null;
         let audienceInsightsData: AudienceInsightsResponse | null = null;
@@ -121,8 +124,8 @@ export function useImageGeneration() {
           setProductsStatus(CodeBlockStatus.LOADING);
 
           const [brandResearchRes, productsRes] = await Promise.allSettled([
-            getBrandDetails({ brand_url: brandUrlValue }),
-            getProducts({ brand_url: brandUrlValue }),
+            getBrandDetails({ brand_url: brandUrlValue }, upriverApiKey),
+            getProducts({ brand_url: brandUrlValue }, upriverApiKey),
           ]);
 
           brandResearchData =
@@ -169,7 +172,8 @@ export function useImageGeneration() {
 
           try {
             audienceInsightsData = await getAudienceInsights(
-              audienceInsightsPayload
+              audienceInsightsPayload,
+              upriverApiKey
             );
             setAudienceInsightsStatus(CodeBlockStatus.SUCCESS);
             setAudienceInsights(audienceInsightsData);
@@ -195,7 +199,7 @@ export function useImageGeneration() {
             try {
               audienceInsightsCitationsData = await getInsightCitations({
                 continuation_token: continuationToken,
-              });
+              }, upriverApiKey);
               console.log(
                 "Citations data received:",
                 audienceInsightsCitationsData
@@ -222,13 +226,13 @@ export function useImageGeneration() {
           products: productsData,
           audienceInsights: audienceInsightsData,
           audienceInsightsCitations: audienceInsightsCitationsData,
-        });
+        }, geminiApiKey);
         setPromptBuilt(true);
 
         setImageGenerating(true);
         const imageResult = await generateImage({
           prompt: promptResult.prompt,
-        });
+        }, geminiApiKey);
         setImageDataUrl(imageResult.dataUrl);
         setImageGenerating(false);
       } catch (err) {

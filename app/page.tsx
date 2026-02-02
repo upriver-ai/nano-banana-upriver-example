@@ -11,6 +11,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import { CodeBlockCard, CodeBlockStatus } from "@/components/code-block-card";
 import { LoaderState } from "@/components/loader-state";
 import { PromptForm } from "@/components/prompt-form";
+import { SettingsMenu } from "@/components/settings-menu";
 import { getApiEndpoints } from "@/lib/api-endpoints";
 import { formatJsonForDisplay } from "@/lib/utils";
 import { useImageGeneration } from "@/hooks/useImageGeneration";
@@ -55,22 +56,25 @@ export default function Home() {
             <div className="flex flex-col min-w-0">
               <section className="flex flex-col gap-5 w-full p-5 min-w-0">
                 {/* header */}
-                <div className="flex flex-row items-center gap-2 w-full">
-                  <Link
-                    href={`${UPRIVER_URL}?ref=banana`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Image
-                      src="/icon.svg"
-                      alt="Upriver"
-                      width={28}
-                      height={28}
-                    />
-                  </Link>
-                  <h1 className="text-2xl font-bold">
-                    Upriver x Nano Banana Example
-                  </h1>
+                <div className="flex flex-row items-center justify-between gap-2 w-full">
+                  <div className="flex flex-row items-center gap-2">
+                    <Link
+                      href={`${UPRIVER_URL}?ref=banana`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Image
+                        src="/icon.svg"
+                        alt="Upriver"
+                        width={28}
+                        height={28}
+                      />
+                    </Link>
+                    <h1 className="text-2xl font-bold">
+                      Upriver x Nano Banana Example
+                    </h1>
+                  </div>
+                  <SettingsMenu />
                 </div>
                 {/* prompt builder form */}
                 <PromptForm
