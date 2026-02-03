@@ -10,7 +10,7 @@ import {
   getInsightCitations,
 } from "@/services/upriver";
 import { generateImage } from "@/services/nano-banana";
-import { generateImagePrompt } from "@/services/gemini";
+import { generateImagePrompt, selectProduct } from "@/services/gemini";
 import {
   buildAudienceInsightsPayload,
   extractContinuationToken,
@@ -23,7 +23,28 @@ import type {
   ProductDetailsResponse,
   AudienceInsightsResponse,
   InsightCitationsResponse,
+  ProductInfo,
 } from "@/services/upriver-types";
+
+// Filter out non-visual or unsuitable products for image generation
+// Only excludes gift cards, vouchers, and memberships - keeps digital products/software
+function shouldExcludeProduct(product: ProductInfo): boolean {
+  const excludePatterns = [
+    // Gift cards and vouchers
+    /gift\s*card/i,
+    /e-?gift/i,
+    /voucher/i,
+    /gift\s*certificate/i,
+
+    // Memberships and subscriptions (non-product)
+    /membership/i,
+    /subscription(?!\s*box)/i, // Exclude "subscription" but allow "subscription box"
+  ];
+
+  const textToCheck = `${product.name} ${product.category}`.toLowerCase();
+
+  return excludePatterns.some(pattern => pattern.test(textToCheck));
+}
 
 export function useImageGeneration() {
   const [brandUrl, setBrandUrl] = useState("");
@@ -166,25 +187,73 @@ export function useImageGeneration() {
             setProductsStatus(CodeBlockStatus.SUCCESS);
             setProducts(productsData);
 
-            // Fetch product details for the first product
+            // Fetch product details for AI-selected product (excluding gift cards, etc.)
             if (productsData.products && productsData.products.length > 0) {
-              const firstProduct = productsData.products[0];
-              setProductDetailsStatus(CodeBlockStatus.LOADING);
+              // Step 1: Filter out unsuitable products
+              const filteredProducts = productsData.products.filter(
+                (product) => !shouldExcludeProduct(product)
+              );
 
-              try {
-                productDetailsData = await getProductDetails({
-                  brand_name: brandResearchData?.brand.name || "",
-                  product_name: firstProduct.name,
-                  product_url: firstProduct.url,
-                }, upriverApiKey);
-                setProductDetailsStatus(CodeBlockStatus.SUCCESS);
-                setProductDetails(productDetailsData);
-              } catch (err) {
+              let selectedProduct: ProductInfo | null = null;
+
+              if (filteredProducts.length > 0) {
+                // Step 2: Use AI to select from filtered products
+                try {
+                  const selectionResult = await selectProduct(
+                    {
+                      products: filteredProducts,
+                      brandResearch: brandResearchData,
+                      brief: briefValue,
+                    },
+                    geminiApiKey
+                  );
+                  selectedProduct = selectionResult.selectedProduct;
+                  console.log(
+                    "AI selected product:",
+                    selectionResult.reasoning || selectedProduct.name
+                  );
+                } catch (err) {
+                  console.warn(
+                    "AI product selection failed, using random fallback:",
+                    err
+                  );
+                  // Fallback: Random selection from filtered products
+                  const randomIndex = Math.floor(
+                    Math.random() * filteredProducts.length
+                  );
+                  selectedProduct = filteredProducts[randomIndex];
+                  console.log(
+                    "Randomly selected product:",
+                    selectedProduct.name
+                  );
+                }
+              }
+
+              if (selectedProduct) {
+                setProductDetailsStatus(CodeBlockStatus.LOADING);
+
+                try {
+                  productDetailsData = await getProductDetails(
+                    {
+                      brand_name: brandResearchData?.brand.name || "",
+                      product_name: selectedProduct.name,
+                      product_url: selectedProduct.url,
+                    },
+                    upriverApiKey
+                  );
+                  setProductDetailsStatus(CodeBlockStatus.SUCCESS);
+                  setProductDetails(productDetailsData);
+                } catch (err) {
+                  console.warn(
+                    "Product details unavailable:",
+                    err instanceof Error ? err.message : "Unknown error"
+                  );
+                  setProductDetailsStatus(CodeBlockStatus.ERROR);
+                }
+              } else {
                 console.warn(
-                  "Product details unavailable:",
-                  err instanceof Error ? err.message : "Unknown error"
+                  "No suitable products found for image generation (all products filtered out)"
                 );
-                setProductDetailsStatus(CodeBlockStatus.ERROR);
               }
             }
           } else {
