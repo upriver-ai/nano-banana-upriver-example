@@ -14,6 +14,7 @@ import { generateImagePrompt } from "@/services/gemini";
 import {
   buildAudienceInsightsPayload,
   extractContinuationToken,
+  normalizeBrandUrl,
 } from "@/lib/workflow-helpers";
 import { getStoredApiKeys } from "@/lib/api-keys";
 import type { PromptFormValues } from "@/components/prompt-form";
@@ -101,7 +102,7 @@ export function useImageGeneration() {
 
   const handleGenerateImage = useCallback(
     async (formValues: PromptFormValues) => {
-      const brandUrlValue = formValues.brandUrl.trim();
+      const brandUrlValue = normalizeBrandUrl(formValues.brandUrl);
       const briefValue = formValues.brief || "";
 
       setBrandUrl(brandUrlValue);
