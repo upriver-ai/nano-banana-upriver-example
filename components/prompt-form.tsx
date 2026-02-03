@@ -14,9 +14,24 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { normalizeBrandUrl } from "@/lib/workflow-helpers";
 
 const formSchema = z.object({
-  brandUrl: z.url(),
+  brandUrl: z
+    .string()
+    .min(1, "Brand URL is required")
+    .transform((val) => normalizeBrandUrl(val))
+    .refine(
+      (val) => {
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Please enter a valid brand URL or domain" }
+    ),
   brief: z.string().optional(),
 });
 
@@ -61,7 +76,7 @@ export function PromptForm({
               <FormControl>
                 <Input
                   type="text"
-                  placeholder="https://acme.com"
+                  placeholder="acme.com"
                   disabled={isLoading}
                   {...field}
                 />
