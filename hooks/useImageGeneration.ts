@@ -5,6 +5,7 @@ import { CodeBlockStatus } from "@/components/code-block-card";
 import {
   getBrandDetails,
   getProducts,
+  getProductDetails,
   getAudienceInsights,
   getInsightCitations,
 } from "@/services/upriver";
@@ -19,6 +20,7 @@ import type { PromptFormValues } from "@/components/prompt-form";
 import type {
   BrandResearchResponse,
   ProductsResponse,
+  ProductDetailsResponse,
   AudienceInsightsResponse,
   InsightCitationsResponse,
 } from "@/services/upriver-types";
@@ -31,6 +33,8 @@ export function useImageGeneration() {
   const [brandResearch, setBrandResearch] =
     useState<BrandResearchResponse | null>(null);
   const [products, setProducts] = useState<ProductsResponse | null>(null);
+  const [productDetails, setProductDetails] =
+    useState<ProductDetailsResponse | null>(null);
   const [audienceInsights, setAudienceInsights] =
     useState<AudienceInsightsResponse | null>(null);
   const [audienceInsightsCitations, setAudienceInsightsCitations] =
@@ -41,6 +45,8 @@ export function useImageGeneration() {
   const [productsStatus, setProductsStatus] = useState<CodeBlockStatus>(
     CodeBlockStatus.NOT_STARTED
   );
+  const [productDetailsStatus, setProductDetailsStatus] =
+    useState<CodeBlockStatus>(CodeBlockStatus.NOT_STARTED);
   const [audienceInsightsStatus, setAudienceInsightsStatus] =
     useState<CodeBlockStatus>(CodeBlockStatus.NOT_STARTED);
   const [audienceInsightsCitationsStatus, setAudienceInsightsCitationsStatus] =
@@ -64,8 +70,12 @@ export function useImageGeneration() {
     const productsDone =
       productsStatus === CodeBlockStatus.SUCCESS ||
       productsStatus === CodeBlockStatus.ERROR;
+    const productDetailsDone =
+      productDetailsStatus === CodeBlockStatus.SUCCESS ||
+      productDetailsStatus === CodeBlockStatus.ERROR ||
+      productDetailsStatus === CodeBlockStatus.NOT_STARTED;
 
-    if (brandResearchDone && productsDone) {
+    if (brandResearchDone && productsDone && productDetailsDone) {
       setBrandProductDetailsComplete(true);
     }
 
@@ -84,6 +94,7 @@ export function useImageGeneration() {
     brandUrl,
     brandResearchStatus,
     productsStatus,
+    productDetailsStatus,
     audienceInsightsStatus,
     audienceInsightsCitationsStatus,
   ]);
@@ -99,10 +110,12 @@ export function useImageGeneration() {
       setImageDataUrl(null);
       setBrandResearch(null);
       setProducts(null);
+      setProductDetails(null);
       setAudienceInsights(null);
       setAudienceInsightsCitations(null);
       setBrandResearchStatus(CodeBlockStatus.NOT_STARTED);
       setProductsStatus(CodeBlockStatus.NOT_STARTED);
+      setProductDetailsStatus(CodeBlockStatus.NOT_STARTED);
       setAudienceInsightsStatus(CodeBlockStatus.NOT_STARTED);
       setAudienceInsightsCitationsStatus(CodeBlockStatus.NOT_STARTED);
       setBrandProductDetailsComplete(false);
@@ -115,6 +128,7 @@ export function useImageGeneration() {
 
         let brandResearchData: BrandResearchResponse | null = null;
         let productsData: ProductsResponse | null = null;
+        let productDetailsData: ProductDetailsResponse | null = null;
         let audienceInsightsData: AudienceInsightsResponse | null = null;
         let audienceInsightsCitationsData: InsightCitationsResponse | null =
           null;
@@ -151,6 +165,28 @@ export function useImageGeneration() {
           if (productsData) {
             setProductsStatus(CodeBlockStatus.SUCCESS);
             setProducts(productsData);
+
+            // Fetch product details for the first product
+            if (productsData.products && productsData.products.length > 0) {
+              const firstProduct = productsData.products[0];
+              setProductDetailsStatus(CodeBlockStatus.LOADING);
+
+              try {
+                productDetailsData = await getProductDetails({
+                  brand_name: brandResearchData?.brand.name || "",
+                  product_name: firstProduct.name,
+                  product_url: firstProduct.url,
+                }, upriverApiKey);
+                setProductDetailsStatus(CodeBlockStatus.SUCCESS);
+                setProductDetails(productDetailsData);
+              } catch (err) {
+                console.warn(
+                  "Product details unavailable:",
+                  err instanceof Error ? err.message : "Unknown error"
+                );
+                setProductDetailsStatus(CodeBlockStatus.ERROR);
+              }
+            }
           } else {
             console.warn(
               "Products unavailable:",
@@ -189,21 +225,12 @@ export function useImageGeneration() {
             extractContinuationToken(audienceInsightsData);
 
           if (continuationToken) {
-            console.log(
-              "Fetching citations with continuation_token:",
-              continuationToken
-            );
-
             setAudienceInsightsCitationsStatus(CodeBlockStatus.LOADING);
 
             try {
               audienceInsightsCitationsData = await getInsightCitations({
                 continuation_token: continuationToken,
               }, upriverApiKey);
-              console.log(
-                "Citations data received:",
-                audienceInsightsCitationsData
-              );
               setAudienceInsightsCitationsStatus(CodeBlockStatus.SUCCESS);
               setAudienceInsightsCitations(audienceInsightsCitationsData);
             } catch (err) {
@@ -224,14 +251,24 @@ export function useImageGeneration() {
           additionalInstructions: briefValue.trim() || undefined,
           brandResearch: brandResearchData,
           products: productsData,
+          productDetails: productDetailsData,
           audienceInsights: audienceInsightsData,
           audienceInsightsCitations: audienceInsightsCitationsData,
         }, geminiApiKey);
         setPromptBuilt(true);
 
         setImageGenerating(true);
+
+        // Extract reference images from product details
+        const referenceImageUrls: string[] = [];
+        if (productDetailsData && productDetailsData.images && productDetailsData.images.length > 0) {
+          // Use the first image as reference
+          referenceImageUrls.push(productDetailsData.images[0]);
+        }
+
         const imageResult = await generateImage({
           prompt: promptResult.prompt,
+          referenceImageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
         }, geminiApiKey);
         setImageDataUrl(imageResult.dataUrl);
         setImageGenerating(false);
@@ -251,10 +288,12 @@ export function useImageGeneration() {
     error,
     brandResearch,
     products,
+    productDetails,
     audienceInsights,
     audienceInsightsCitations,
     brandResearchStatus,
     productsStatus,
+    productDetailsStatus,
     audienceInsightsStatus,
     audienceInsightsCitationsStatus,
     brandProductDetailsComplete,
