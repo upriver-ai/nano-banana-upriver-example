@@ -7,6 +7,7 @@ import type {
   ProductDetailsResponse,
   AudienceInsightsResponse,
   InsightCitationsResponse,
+  ProductInfo,
 } from "./upriver-types";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
@@ -266,4 +267,148 @@ export async function generateImagePrompt(
   return {
     prompt: generatedText.trim(),
   };
+}
+
+export interface SelectProductOptions {
+  products: ProductInfo[];
+  brandResearch: BrandResearchResponse | null;
+  brief?: string;
+}
+
+export interface SelectProductResult {
+  selectedProduct: ProductInfo;
+  reasoning?: string;
+}
+
+export async function selectProduct(
+  options: SelectProductOptions,
+  apiKey?: string
+): Promise<SelectProductResult> {
+  const key = apiKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not set. Please provide an API key in settings or set the environment variable.");
+  }
+
+  const { products, brandResearch, brief } = options;
+
+  if (products.length === 0) {
+    throw new Error("No products available for selection");
+  }
+
+  // If only one product, no need for LLM selection
+  if (products.length === 1) {
+    return {
+      selectedProduct: products[0],
+      reasoning: "Only one product available",
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey: key });
+  const model = DEFAULT_MODEL;
+
+  // Build the selection prompt
+  let prompt = `You are selecting the best product for lifestyle image generation.
+
+Your task is to analyze the available products and select the one that:
+• Has the most visual potential for lifestyle imagery (looks good in photos, photogenic)
+• Best aligns with the brand's vibe, values, and identity
+• Fits the user's brief or additional instructions if provided
+• Would create the most engaging and shareable social media content
+• Works well in a lifestyle scene (not too abstract, has clear visual form)
+
+`;
+
+  // Add brand context
+  if (brandResearch && !("error" in brandResearch) && brandResearch.brand) {
+    const brand = brandResearch.brand;
+    prompt += `## Brand Context\n`;
+    prompt += `• Brand: ${brand.name || "N/A"}\n`;
+    prompt += `• Industry: ${brand.industry || "N/A"}\n`;
+    if (brand.values && brand.values.length > 0) {
+      prompt += `• Core Values: ${brand.values.join(", ")}\n`;
+    }
+    if (brand.voice) {
+      prompt += `• Brand Voice: ${brand.voice}\n`;
+    }
+    if (brand.mission) {
+      prompt += `• Mission: ${brand.mission}\n`;
+    }
+    prompt += `\n`;
+  }
+
+  // Add user brief
+  if (brief && brief.trim()) {
+    prompt += `## User Brief\n${brief.trim()}\n\n`;
+  }
+
+  // Add products list
+  prompt += `## Available Products\n\n`;
+  products.forEach((product, index) => {
+    prompt += `${index + 1}. ${product.name}\n`;
+    prompt += `   Category: ${product.category}\n`;
+    prompt += `   Description: ${product.description}\n`;
+    if (product.url) {
+      prompt += `   URL: ${product.url}\n`;
+    }
+    prompt += `\n`;
+  });
+
+  prompt += `\nBased on the brand context, user brief, and product information above, select the product with the best visual potential for lifestyle imagery.\n\n`;
+  prompt += `Return ONLY the exact product name from the list above. Do not include the number, category, or any other text - just the product name exactly as it appears.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+    });
+
+    const selectedProductName =
+      response.candidates?.[0]?.content?.parts
+        ?.map((part) => {
+          if ("text" in part) {
+            return part.text;
+          }
+          return "";
+        })
+        .join("")
+        .trim() || "";
+
+    if (!selectedProductName) {
+      throw new Error("No product name returned from AI selection");
+    }
+
+    // Find matching product (case-insensitive)
+    const selectedProduct = products.find(
+      (p) => p.name.toLowerCase() === selectedProductName.toLowerCase()
+    );
+
+    if (!selectedProduct) {
+      // Try fuzzy matching - check if the returned name is contained in any product name
+      const fuzzyMatch = products.find(
+        (p) =>
+          p.name.toLowerCase().includes(selectedProductName.toLowerCase()) ||
+          selectedProductName.toLowerCase().includes(p.name.toLowerCase())
+      );
+
+      if (fuzzyMatch) {
+        return {
+          selectedProduct: fuzzyMatch,
+          reasoning: `AI selected: ${selectedProductName} (matched to ${fuzzyMatch.name})`,
+        };
+      }
+
+      throw new Error(
+        `AI selected product "${selectedProductName}" not found in products list`
+      );
+    }
+
+    return {
+      selectedProduct,
+      reasoning: `AI selected: ${selectedProductName}`,
+    };
+  } catch (err) {
+    throw new Error(
+      `Product selection failed: ${err instanceof Error ? err.message : "Unknown error"}`
+    );
+  }
 }

@@ -10,7 +10,7 @@ import {
   getInsightCitations,
 } from "@/services/upriver";
 import { generateImage } from "@/services/nano-banana";
-import { generateImagePrompt } from "@/services/gemini";
+import { generateImagePrompt, selectProduct } from "@/services/gemini";
 import {
   buildAudienceInsightsPayload,
   extractContinuationToken,
@@ -24,6 +24,7 @@ import type {
   ProductDetailsResponse,
   AudienceInsightsResponse,
   InsightCitationsResponse,
+  ProductInfo,
 } from "@/services/upriver-types";
 
 export function useImageGeneration() {
@@ -167,25 +168,59 @@ export function useImageGeneration() {
             setProductsStatus(CodeBlockStatus.SUCCESS);
             setProducts(productsData);
 
-            // Fetch product details for the first product
+            // Use AI to select the best product for image generation
             if (productsData.products && productsData.products.length > 0) {
-              const firstProduct = productsData.products[0];
-              setProductDetailsStatus(CodeBlockStatus.LOADING);
+              let selectedProduct: ProductInfo | null = null;
 
+              // Use AI to select the product with best visual potential
               try {
-                productDetailsData = await getProductDetails({
-                  brand_name: brandResearchData?.brand.name || "",
-                  product_name: firstProduct.name,
-                  product_url: firstProduct.url,
-                }, upriverApiKey);
-                setProductDetailsStatus(CodeBlockStatus.SUCCESS);
-                setProductDetails(productDetailsData);
+                const selectionResult = await selectProduct(
+                  {
+                    products: productsData.products,
+                    brandResearch: brandResearchData,
+                    brief: briefValue,
+                  },
+                  geminiApiKey
+                );
+                selectedProduct = selectionResult.selectedProduct;
+                console.log(
+                  "AI selected product:",
+                  selectionResult.reasoning || selectedProduct.name
+                );
               } catch (err) {
                 console.warn(
-                  "Product details unavailable:",
-                  err instanceof Error ? err.message : "Unknown error"
+                  "AI product selection failed, using random fallback:",
+                  err
                 );
-                setProductDetailsStatus(CodeBlockStatus.ERROR);
+                // Fallback: Random selection
+                const randomIndex = Math.floor(
+                  Math.random() * productsData.products.length
+                );
+                selectedProduct = productsData.products[randomIndex];
+                console.log("Randomly selected product:", selectedProduct.name);
+              }
+
+              if (selectedProduct) {
+                setProductDetailsStatus(CodeBlockStatus.LOADING);
+
+                try {
+                  productDetailsData = await getProductDetails(
+                    {
+                      brand_name: brandResearchData?.brand.name || "",
+                      product_name: selectedProduct.name,
+                      product_url: selectedProduct.url,
+                    },
+                    upriverApiKey
+                  );
+                  setProductDetailsStatus(CodeBlockStatus.SUCCESS);
+                  setProductDetails(productDetailsData);
+                } catch (err) {
+                  console.warn(
+                    "Product details unavailable:",
+                    err instanceof Error ? err.message : "Unknown error"
+                  );
+                  setProductDetailsStatus(CodeBlockStatus.ERROR);
+                }
               }
             }
           } else {
