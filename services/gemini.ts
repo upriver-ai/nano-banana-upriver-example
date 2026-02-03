@@ -77,7 +77,7 @@ Guidelines for the prompt:
     prompt += `\n## PRODUCT SPECIFICATIONS (CRITICAL)\n`;
 
     if (productDetails.images && productDetails.images.length > 0) {
-      prompt += `\n⚠️ REFERENCE IMAGE PROVIDED ⚠️\n`;
+      prompt += `\nREFERENCE IMAGE PROVIDED\n`;
       prompt += `A reference image showing the actual product has been included with this request.\n\n`;
     }
 
@@ -93,7 +93,7 @@ Guidelines for the prompt:
     }
 
     if (productDetails.images && productDetails.images.length > 0) {
-      prompt += `\n🎯 MANDATORY REQUIREMENT:\n`;
+      prompt += `\nMANDATORY REQUIREMENT:\n`;
       prompt += `The generated image MUST feature this specific product from the reference image.\n`;
       prompt += `• Include the product prominently and accurately as shown in the reference image\n`;
       prompt += `• Do NOT redesign, stylize, or create a different product\n`;
