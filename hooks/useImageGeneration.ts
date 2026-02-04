@@ -213,17 +213,24 @@ export function useImageGeneration() {
                     setProductDetailsStatus(CodeBlockStatus.SUCCESS);
                     setProductDetails(productDetailsData);
                   } catch (err) {
-                    console.warn(
-                      "Product details unavailable:",
-                      err instanceof Error ? err.message : "Unknown error"
-                    );
-                    setProductDetailsStatus(CodeBlockStatus.ERROR);
+                    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+
+                    // 404 means product details aren't available, which is expected - not an error
+                    if (errorMessage.includes("404")) {
+                      console.warn(
+                        `Product details not available for "${selectedProduct.name}" - continuing without detailed info`
+                      );
+                      setProductDetailsStatus(CodeBlockStatus.SUCCESS);
+                    } else {
+                      console.warn("Product details unavailable:", errorMessage);
+                      setProductDetailsStatus(CodeBlockStatus.ERROR);
+                    }
                   }
                 } else {
                   console.warn(
                     "Skipping product details: brand name not available"
                   );
-                  setProductDetailsStatus(CodeBlockStatus.ERROR);
+                  setProductDetailsStatus(CodeBlockStatus.SUCCESS);
                 }
               }
             }
