@@ -224,6 +224,38 @@ The product should be:
 
 Think: "People living their best life, brand values visible in how they live" NOT "People posing with product"
 </scene_approach>
+
+<naturalness_requirements>
+CRITICAL: The scene must look UNSTAGED and CANDID. Avoid any appearance of a photoshoot.
+
+Natural Human Elements:
+- Body language: Mid-movement, asymmetric poses, natural gestures (not facing camera, not "ready" poses)
+- Expressions: Genuine emotion focused on activity, not camera-aware smiles
+- Imperfections: Messy hair, wrinkled clothes, relaxed postures
+- Interaction: People engaged with each other or their task, not acknowledging camera
+
+Environmental Authenticity:
+- Lived-in spaces: Slight clutter, personal items, signs of use
+- Natural lighting: Window light, golden hour, shadows and highlights (not flat/perfect studio lighting)
+- Organic composition: Slightly off-center subjects, elements cropped at frame edges
+- Real-world messiness: Backgrounds that feel inhabited, not art-directed
+
+AVOID THESE STAGED INDICATORS:
+❌ Perfect symmetry or centered subjects
+❌ Everyone looking at camera or posed "naturally"
+❌ Pristine, magazine-perfect environments
+❌ Flat, even lighting with no shadows
+❌ Product perfectly positioned for camera
+❌ Models clearly "acting casual"
+
+AIM FOR THESE CANDID QUALITIES:
+✓ Subject caught mid-laugh, mid-conversation, mid-action
+✓ Slightly blurred motion or natural depth of field
+✓ Cropped body parts at frame edge (feels like a stolen moment)
+✓ Uneven lighting with real shadows
+✓ Background slightly out of focus with visible context
+✓ People looking at each other, not camera
+</naturalness_requirements>
 `;
 
   if (productDetails && !("error" in productDetails)) {
@@ -308,10 +340,18 @@ Requirements:
 - Include full human subjects with clear activities/emotions
 - Product should be small detail in larger scene
 - Authentically represent brand values through the world depicted
+- Include natural imperfections and candid qualities (see naturalness_requirements)
 - No mention of platforms, models, or technical processes
 
-BAD EXAMPLE: "A sleek laptop on a minimalist desk with coffee cup nearby"
-GOOD EXAMPLE: "A designer works intently at a sunlit studio desk, sketching with headphones on, surrounded by inspiration boards and plants. Their laptop is open in the background running design software, while morning light streams through industrial windows."
+BAD EXAMPLES (too staged/product-focused):
+❌ "A sleek laptop on a minimalist desk with coffee cup nearby"
+❌ "A woman smiling at camera while holding product in perfect lighting"
+❌ "Product centered on clean surface with aesthetic props arranged around it"
+
+GOOD EXAMPLES (candid lifestyle moments):
+✓ "Two friends laugh over shared headphones at a cafe table cluttered with notebooks and coffee cups, afternoon sunlight streaming through the window creating warm shadows. One gestures animatedly while the other leans back in their chair, both mid-conversation. A laptop sits open but forgotten at the table's edge."
+✓ "A runner pauses mid-trail to check their watch, slightly out of breath, one hand on their hip. Morning mist hangs in the pine forest behind them, their water bottle visible clipped to their waist. The frame catches them from an angle, body turned away from camera."
+✓ "In a sunlit kitchen, someone kneads dough with flour-dusted hands, hair pulled back messily. Ingredient containers and bowls crowd the counter in organized chaos. Natural window light creates strong shadows across the marble surface. A cookbook lies open in the background."
 </output_instructions>
 `;
 
