@@ -71,3 +71,40 @@ export function extractContinuationToken(
 
   return null;
 }
+
+/**
+ * Normalizes a partial domain into a well-formed URL.
+ *
+ * Examples:
+ * - "olipop.com" → "https://olipop.com"
+ * - "www.nike.com" → "https://www.nike.com"
+ * - "halfpricedrapes.com" → "https://halfpricedrapes.com"
+ * - "https://example.com" → "https://example.com" (unchanged)
+ * - "http://example.com" → "https://example.com" (upgraded to https)
+ */
+export function normalizeBrandUrl(input: string): string {
+  const trimmed = input.trim();
+
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  // Already has https:// protocol
+  if (trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  // Has http:// protocol - upgrade to https
+  if (trimmed.startsWith("http://")) {
+    return trimmed.replace("http://", "https://");
+  }
+
+  // Remove leading // or www. patterns
+  let domain = trimmed;
+  if (domain.startsWith("//")) {
+    domain = domain.substring(2);
+  }
+
+  // Add https:// prefix
+  return `https://${domain}`;
+}
