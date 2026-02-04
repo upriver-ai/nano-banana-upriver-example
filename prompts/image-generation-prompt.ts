@@ -44,34 +44,34 @@ export function buildImageGenerationPrompt(options: GeneratePromptOptions): stri
     audienceInsightsCitations,
   } = options;
 
-  // SYSTEM ROLE & TASK DEFINITION
-  // Customize this section to change the AI's perspective and approach
-  let prompt = `You are an expert brand strategist and creative director specializing in lifestyle brand imagery and visual storytelling. Your expertise lies in creating compelling, audience-centered visuals that authentically capture brand essence through engaging scenes and contexts.
+  let prompt = `You are a creative director crafting lifestyle brand imagery.
 
-Your task is to create a detailed image generation prompt for lifestyle brand imagery that tells a visual story. The prompt must:
+<task>
+Generate a detailed image description for an image generation model. Output a single, vivid description of a photograph including:
+- Scene setting (environment, lighting, atmosphere, time of day)
+- Subject positioning (angles, focal points, composition)
+- Visual style (color palette, aesthetic, mood)
+- Product integration (naturally within the scene)
+- Specific details that bring authenticity
 
-• Create lifestyle-focused imagery that showcases the brand's world and resonates with the target audience
-• When reference images are provided, include the product naturally within engaging scenes
-• Balance product visibility with storytelling - the scene should feel authentic, not staged around the product
-• Synthesize all available brand context including identity, values, mission, and visual language
-• Align with the target audience's preferences, motivations, and psychological triggers
-• Depict social moments, use-case scenarios, or aspirational lifestyle scenes
-• Reflect the brand's tone, voice, and communication style
-• Include specific visual elements, composition guidance, and style direction
-• Be clear, detailed, and optimized for image generation AI models
-• Prioritize audience connection and brand vibe over product hero shots
+The image should feel like a candid lifestyle moment, not a staged product shot. Prioritize storytelling and emotional connection.
+</task>
+`;
 
-Guidelines for the prompt:
-• Use descriptive, vivid language that paints a clear visual picture of a lifestyle moment or scene
-• Specify composition, lighting, mood, and color palette that embody the brand's vibe
-• Include style references (e.g., "modern minimalist", "vibrant and energetic", "sophisticated and elegant")
-• Mention any key visual elements, symbols, or motifs that represent the brand
-• When reference images are provided, feature the product naturally within the scene - visible and recognizable but integrated authentically
-• Focus on the audience's world - their environments, social settings, aspirations, and everyday moments
-• Create scenes that tell a story and evoke emotion, not just display a product
-• Ensure the prompt is self-contained and doesn't require additional context
-• Do NOT mention specific image generation models, platforms, or tools (e.g., Midjourney, DALL-E, Stable Diffusion, etc.)
-• Focus purely on the visual description and artistic direction
+  prompt += `\n<constraints>
+<technical>
+- Aspect ratio: 1:1 square (social media optimized)
+- Composition: Rule of thirds for balance
+- Avoid: Copyrighted elements, identifiable faces, text overlays
+- Contrast: Sufficient for accessibility
+</technical>
+
+<creative>
+- Diverse representation (unless narrow audience specified)
+- Candid, relatable scenes (not overly staged)
+- Product prominence: 20-40% of visual weight
+</creative>
+</constraints>
 `;
 
   // BRAND URL & ADDITIONAL INSTRUCTIONS
@@ -85,170 +85,211 @@ Guidelines for the prompt:
     prompt += `\nAdditional Instructions: ${additionalInstructions.trim()}\n`;
   }
 
-  // AUDIENCE INSIGHTS (PRIMARY FOCUS)
-  // This section emphasizes who we're creating imagery for
-  // Customize to adjust the weight of audience data in prompt generation
   if (audienceInsights && !("error" in audienceInsights)) {
-    prompt += `\n## AUDIENCE INSIGHTS (PRIMARY)\n`;
+    prompt += `\n<audience>
+`;
+
     if (audienceInsights.rollup_summary) {
-      prompt += `• Summary: ${audienceInsights.rollup_summary}\n`;
+      prompt += `<summary>${audienceInsights.rollup_summary}</summary>
+`;
     }
+
     if (audienceInsights.personas && audienceInsights.personas.length > 0) {
-      prompt += `• Key Personas:\n`;
+      prompt += `\n<personas>
+`;
+
       audienceInsights.personas.slice(0, 3).forEach((persona) => {
-        prompt += `  - ${persona.label}: ${persona.description}\n`;
+        prompt += `<persona>
+<label>${persona.label}</label>
+<description>${persona.description}</description>
+`;
+
         if (persona.psychology) {
-          if (
-            persona.psychology.motivations &&
-            persona.psychology.motivations.length > 0
-          ) {
-            prompt += `    Motivations: ${persona.psychology.motivations
-              .slice(0, 3)
-              .join(", ")}\n`;
+          prompt += `<psychology>
+`;
+          if (persona.psychology.motivations && persona.psychology.motivations.length > 0) {
+            prompt += `<motivations>${persona.psychology.motivations.slice(0, 4).join(", ")}</motivations>
+`;
           }
-          if (
-            persona.psychology.triggers &&
-            persona.psychology.triggers.length > 0
-          ) {
-            prompt += `    Triggers: ${persona.psychology.triggers
-              .slice(0, 3)
-              .join(", ")}\n`;
+          if (persona.psychology.triggers && persona.psychology.triggers.length > 0) {
+            prompt += `<triggers>${persona.psychology.triggers.slice(0, 4).join(", ")}</triggers>
+`;
           }
+          if (persona.psychology.barriers && persona.psychology.barriers.length > 0) {
+            prompt += `<barriers>${persona.psychology.barriers.slice(0, 3).join(", ")}</barriers>
+`;
+          }
+          prompt += `</psychology>
+`;
         }
-        if (
-          persona.language_patterns?.tone_descriptors &&
-          persona.language_patterns.tone_descriptors.length > 0
-        ) {
-          prompt += `    Preferred Tone: ${persona.language_patterns.tone_descriptors
-            .slice(0, 3)
-            .join(", ")}\n`;
+
+        if (persona.personality_traits && persona.personality_traits.length > 0) {
+          const traits = persona.personality_traits.slice(0, 3).map(t => t.trait).join(", ");
+          prompt += `<traits>${traits}</traits>
+`;
         }
+
+        if (persona.language_patterns?.tone_descriptors && persona.language_patterns.tone_descriptors.length > 0) {
+          prompt += `<tone>${persona.language_patterns.tone_descriptors.slice(0, 3).join(", ")}</tone>
+`;
+        }
+
+        prompt += `</persona>
+`;
       });
+
+      prompt += `</personas>
+
+<synthesis_task>
+Translate these psychological insights into visual elements:
+- Settings that resonate with motivations
+- Mood and atmosphere aligned with triggers
+- Visual style reflecting personality traits
+- Color palette evoking emotional response
+- Compositions leveraging psychological patterns
+</synthesis_task>
+`;
     }
+
+    prompt += `</audience>
+`;
   }
 
-  // BRAND RESEARCH
-  // Core brand identity, values, and positioning
-  // Customize to emphasize different brand attributes
   if (brandResearch && !("error" in brandResearch)) {
-    prompt += `\n## Brand Research\n`;
+    prompt += `\n<brand>
+`;
     if (brandResearch.brand) {
       const brand = brandResearch.brand;
-      prompt += `• Brand Name: ${brand.name || "N/A"}\n`;
-      prompt += `• Industry: ${brand.industry || "N/A"}\n`;
-      prompt += `• Mission: ${brand.mission || "N/A"}\n`;
-      prompt += `• Tagline: ${brand.tagline || "N/A"}\n`;
-      prompt += `• Voice: ${brand.voice || "N/A"}\n`;
+
+      if (brand.name) {
+        prompt += `<name>${brand.name}</name>
+`;
+      }
+      if (brand.industry) {
+        prompt += `<industry>${brand.industry}</industry>
+`;
+      }
+      if (brand.mission) {
+        prompt += `<mission>${brand.mission}</mission>
+`;
+      }
+      if (brand.tagline) {
+        prompt += `<tagline>${brand.tagline}</tagline>
+`;
+      }
       if (brand.values && brand.values.length > 0) {
-        prompt += `• Core Values: ${brand.values.join(", ")}\n`;
+        prompt += `<values>${brand.values.join(", ")}</values>
+`;
       }
-      if (brand.target_audience) {
-        prompt += `• Target Audience: ${brand.target_audience}\n`;
+      if (brand.voice) {
+        prompt += `<voice>${brand.voice}</voice>
+`;
       }
-      if (brand.identity) {
-        prompt += `• Brand Identity:\n`;
-        if (brand.identity.language) {
-          prompt += `  - Tone: ${brand.identity.language.tone || "N/A"}\n`;
-          if (
-            brand.identity.language.key_phrases &&
-            brand.identity.language.key_phrases.length > 0
-          ) {
-            prompt += `  - Key Phrases: ${brand.identity.language.key_phrases.join(
-              ", "
-            )}\n`;
-          }
-        }
+      if (brand.identity?.language?.tone) {
+        prompt += `<tone>${brand.identity.language.tone}</tone>
+`;
+      }
+      if (brand.identity?.language?.key_phrases && brand.identity.language.key_phrases.length > 0) {
+        prompt += `<key_themes>${brand.identity.language.key_phrases.slice(0, 3).join(", ")}</key_themes>
+`;
+      }
+      if (brand.target_audience || brandResearch.audience?.description) {
+        prompt += `<target_audience>${brand.target_audience || brandResearch.audience?.description}</target_audience>
+`;
       }
     }
-    if (brandResearch.audience) {
-      prompt += `• Audience Description: ${
-        brandResearch.audience.description || "N/A"
-      }\n`;
-    }
+
+    prompt += `</brand>
+`;
   }
 
-  // SCENE & CONTEXT GUIDANCE
-  // Defines the type of lifestyle imagery to create
-  // Customize this section to change scene focus (e.g., product-focused vs lifestyle-focused)
-  prompt += `\n## SCENE & CONTEXT\n`;
-  prompt += `\nCreate a lifestyle image that:\n`;
-  prompt += `• Shows the product in a real-world setting that resonates with the target audience\n`;
-  prompt += `• Depicts a social moment, use-case scenario, or aspirational lifestyle scene\n`;
-  prompt += `• Uses the product as a natural part of the scene, not as a standalone object\n`;
-  prompt += `• Captures the brand's vibe and values through the environment, lighting, and composition\n`;
-  prompt += `• Features people, settings, or moments that the audience can relate to or aspire to\n`;
-  prompt += `• Tells a visual story that connects the product to the audience's world\n`;
-  prompt += `\nExamples of scene types:\n`;
-  prompt += `• Social gatherings (friends, family, celebrations)\n`;
-  prompt += `• Lifestyle moments (morning routine, weekend activities, self-care)\n`;
-  prompt += `• Aspirational settings (travel, adventure, achievement)\n`;
-  prompt += `• Everyday contexts (work, home, commute) elevated with brand aesthetics\n\n`;
+  prompt += `\n<scene_approach>
+Create a lifestyle image showing the product in a real-world setting. The scene should:
+- Depict a relatable moment (social gathering, routine, aspiration)
+- Feature the product naturally integrated (not isolated)
+- Capture brand vibe through environment, lighting, composition
+- Tell a visual story connecting product to audience's world
+- Feel authentic and candid, not staged
+</scene_approach>
+`;
 
-  // PRODUCT INTEGRATION
-  // Controls how products are featured in generated scenes
-  // Customize to adjust product prominence and integration style
   if (productDetails && !("error" in productDetails)) {
-    prompt += `\n## Product Integration\n`;
-
-    if (productDetails.images && productDetails.images.length > 0) {
-      prompt += `\nREFERENCE IMAGE PROVIDED\n`;
-      prompt += `A reference image showing the actual product has been included with this request.\n\n`;
-    }
-
-    prompt += `• Product Name: ${productDetails.name}\n`;
-    prompt += `• Visual Description: ${productDetails.description}\n`;
+    prompt += `\n<product>
+<name>${productDetails.name}</name>
+<description>${productDetails.description}</description>
+`;
 
     if (productDetails.features && productDetails.features.length > 0) {
-      prompt += `• Product Features: ${productDetails.features.join(", ")}\n`;
+      prompt += `<features>${productDetails.features.slice(0, 5).join(", ")}</features>
+`;
     }
 
     if (productDetails.price) {
-      prompt += `• Price: ${productDetails.price}${productDetails.currency ? ` ${productDetails.currency}` : ""}\n`;
+      prompt += `<price>${productDetails.price}${productDetails.currency ? ` ${productDetails.currency}` : ""}</price>
+`;
     }
 
     if (productDetails.images && productDetails.images.length > 0) {
-      prompt += `\nProduct Guidelines:\n`;
-      prompt += `The generated image should feature this specific product from the reference image.\n`;
-      prompt += `• Feature the product naturally within the scene - visible and recognizable\n`;
-      prompt += `• Do NOT redesign, stylize, or create a different product\n`;
-      prompt += `• Do NOT use a generic or simplified version of the product\n`;
-      prompt += `• Show the product in use or as part of the lifestyle moment being depicted\n`;
-      prompt += `• Match the product's visual appearance, colors, materials, and proportions accurately\n`;
-      prompt += `• The product should feel authentic to the scene, not staged as the sole focal point\n`;
-      prompt += `• Prioritize the story and scene composition, with the product integrated naturally\n\n`;
+      prompt += `\n<reference_image_provided>true</reference_image_provided>
+<integration_requirements>
+- Feature exact product from reference (do not redesign)
+- Show naturally in lifestyle scene (not isolated)
+- Maintain visual accuracy (colors, materials, proportions)
+- Visible and recognizable, but not dominating
+</integration_requirements>
+`;
     }
+
+    prompt += `</product>
+`;
   }
 
-  // ADDITIONAL PRODUCTS CONTEXT
-  if (products && !("error" in products) && products.products) {
-    prompt += `\n## Additional Products\n`;
-    if (products.products.length > 0) {
-      prompt += `• Product Categories:\n`;
-      products.products.slice(0, 10).forEach((product) => {
-        prompt += `  - ${product.name} (${product.category}): ${product.description}\n`;
-      });
-    }
+  if (products && !("error" in products) && products.products && products.products.length > 0) {
+    prompt += `\n<brand_catalog>
+`;
+    products.products.slice(0, 8).forEach((product) => {
+      prompt += `<item>${product.name} (${product.category})</item>
+`;
+    });
+    prompt += `</brand_catalog>
+`;
   }
 
-  // SUPPORTING EVIDENCE
   if (
     audienceInsightsCitations &&
     !("error" in audienceInsightsCitations) &&
-    audienceInsightsCitations.citations
+    audienceInsightsCitations.citations &&
+    audienceInsightsCitations.citations.length > 0
   ) {
-    prompt += `\n## Supporting Evidence\n`;
-    prompt += `• Found ${audienceInsightsCitations.citations.length} relevant citations from audience research\n`;
+    prompt += `\n<citations>
+<note>Real audience conversations (${audienceInsightsCitations.citations.length} sources). Extract authentic contexts and moments.</note>
+`;
+
+    audienceInsightsCitations.citations.slice(0, 5).forEach((citation, index) => {
+      prompt += `
+<citation id="${index + 1}" relevance="${citation.relevance_score}">
+<text>${citation.text.slice(0, 200)}${citation.text.length > 200 ? '...' : ''}</text>
+<source>${citation.source}${citation.subreddit ? ` (r/${citation.subreddit})` : ''}</source>
+<why_relevant>${citation.reason}</why_relevant>
+</citation>
+`;
+    });
+
+    prompt += `</citations>
+`;
   }
 
-  // FINAL INSTRUCTIONS
-  prompt += `\nNow, create a comprehensive image generation prompt that synthesizes all of this information. The prompt should be detailed, visually descriptive, and optimized for generating a lifestyle image that authentically represents this brand while resonating with its target audience.`;
+  prompt += `\n<output_instructions>
+Generate a detailed image description synthesizing all inputs above.
 
-  // Add specific instruction if product images are present
-  if (productDetails && productDetails.images && productDetails.images.length > 0) {
-    prompt += ` CRITICAL: Create a compelling scene that embodies the brand's vibe and resonates with the target audience. The product from the reference image should appear naturally within this scene - visible and recognizable, but integrated authentically rather than staged as the sole focal point. Prioritize storytelling and audience connection over product hero shots.`;
-  }
-
-  prompt += ` Remember: do not mention any specific image generation models or platforms - focus solely on the visual description and artistic direction.`;
+Requirements:
+- Write as a complete visual description (not meta-instructions)
+- Be specific: lighting, composition, colors, mood, details
+- Authentically represent brand while resonating with audience
+- Natural product integration in lifestyle context
+- No mention of platforms, models, or technical processes
+</output_instructions>
+`;
 
   return prompt;
 }

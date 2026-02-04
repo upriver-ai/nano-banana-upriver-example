@@ -51,12 +51,10 @@ npm run dev
 
 ## Customizing Prompts
 
-All LLM prompts are located in the `prompts/` folder for easy customization:
+LLM prompts are located in the `prompts/` folder for easy customization:
 
 - **`prompts/image-generation-prompt.ts`** - Controls how lifestyle imagery prompts are generated
 - **`prompts/product-selection-prompt.ts`** - Controls how products are selected for visual potential
-
-See `prompts/README.md` for detailed customization guidance.
 
 ## Project Structure
 
