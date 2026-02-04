@@ -84,7 +84,7 @@ All LLM prompts are located in the `prompts/` folder:
   - Customizable sections: selection criteria, brand context weighting
   - Exported function: `buildProductSelectionPrompt(options)`
 
-See `prompts/README.md` for detailed customization guidance.
+Both prompt files include inline comments marking customization points. The prompts use structured XML tags for clarity and follow AI prompt engineering best practices.
 
 ### Upriver API Endpoints Used
 1. **`/brand/research`** - Brand identity, mission, values, voice
