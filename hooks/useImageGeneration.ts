@@ -74,8 +74,7 @@ export function useImageGeneration() {
       productsStatus === CodeBlockStatus.ERROR;
     const productDetailsDone =
       productDetailsStatus === CodeBlockStatus.SUCCESS ||
-      productDetailsStatus === CodeBlockStatus.ERROR ||
-      productDetailsStatus === CodeBlockStatus.NOT_STARTED;
+      productDetailsStatus === CodeBlockStatus.ERROR;
 
     if (brandResearchDone && productsDone && productDetailsDone) {
       setBrandProductDetailsComplete(true);
