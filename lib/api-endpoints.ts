@@ -50,26 +50,15 @@ export function getApiEndpoints(
       title: "/brand/product",
       url: `${baseDocsUrl}/api-reference/products/product-details?ref=banana`,
       description: "Get detailed information about a specific product",
-      curlRequest: `const options = {
-  method: 'POST',
-  headers: {
-    'X-API-Key': 'YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    brand_name: 'ACME',
-    product_name: 'Widget Pro',
-    product_url: 'https://acme.com/products/widget-pro',
-    effort: 'low'
-  })
-};
-
-fetch('https://api.upriver.ai/v1/brand/product', options)
-  .then(res => res.json())
-  .then(res => {
-    // Handle response
-  })
-  .catch(err => console.error(err));`,
+      curlRequest: `curl -X POST "https://api.upriver.ai/v1/brand/product" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "brand_name": "ACME",
+    "product_name": "Widget Pro",
+    "product_url": "https://acme.com/products/widget-pro",
+    "effort": "low"
+  }'`,
       data: data.productDetails,
     },
     {
