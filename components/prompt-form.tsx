@@ -75,7 +75,7 @@ export function PromptForm({
           name="brief"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Additional Instructions (optional)</FormLabel>
+              <FormLabel>Image Brief (optional)</FormLabel>
               <FormControl>
                 <Input
                   type="text"
