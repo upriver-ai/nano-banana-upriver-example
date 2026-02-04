@@ -47,14 +47,15 @@ export function buildImageGenerationPrompt(options: GeneratePromptOptions): stri
   let prompt = `You are a creative director crafting lifestyle brand imagery.
 
 <task>
-Generate a detailed image description for an image generation model. Output a single, vivid description of a photograph including:
-- Scene setting (environment, lighting, atmosphere, time of day)
-- Subject positioning (angles, focal points, composition)
-- Visual style (color palette, aesthetic, mood)
-- Product integration (naturally within the scene)
-- Specific details that bring authenticity
+Generate a detailed image description for an image generation model. Output a single, vivid description of a photograph capturing a LIFESTYLE MOMENT, not a product shot.
 
-The image should feel like a candid lifestyle moment, not a staged product shot. Prioritize storytelling and emotional connection.
+PRIORITY ORDER:
+1. The scene, vibe, and atmosphere that embodies the brand
+2. The people and their authentic activity/emotion
+3. The environment and lighting that creates the mood
+4. The product as a natural, subtle element within this world
+
+The image should feel like a documentary photograph of someone's real life, where the product happens to be present. Think: lifestyle editorial, not e-commerce.
 </task>
 `;
 
@@ -67,9 +68,11 @@ The image should feel like a candid lifestyle moment, not a staged product shot.
 </technical>
 
 <creative>
+- PRIMARY FOCUS: People, environment, moment, emotion
+- Product visibility: Subtle presence (10-25% of visual weight max)
+- Human subjects: Include full people engaged in activities
+- Scene authenticity: Real moments, not staged arrangements
 - Diverse representation (unless narrow audience specified)
-- Candid, relatable scenes (not overly staged)
-- Product prominence: 20-40% of visual weight
 </creative>
 </constraints>
 `;
@@ -204,12 +207,22 @@ Translate these psychological insights into visual elements:
   }
 
   prompt += `\n<scene_approach>
-Create a lifestyle image showing the product in a real-world setting. The scene should:
-- Depict a relatable moment (social gathering, routine, aspiration)
-- Feature the product naturally integrated (not isolated)
-- Capture brand vibe through environment, lighting, composition
-- Tell a visual story connecting product to audience's world
-- Feel authentic and candid, not staged
+Create a lifestyle image where the SCENE is the hero, not the product.
+
+The image should show:
+- PEOPLE: Full human subjects (not just hands) engaged in authentic activities
+- ENVIRONMENT: Rich, detailed setting that embodies the brand vibe
+- MOMENT: A specific slice of life (morning ritual, social gathering, creative pursuit, outdoor adventure)
+- EMOTION: Visible connection, joy, focus, calm - whatever resonates with the brand
+- ATMOSPHERE: Lighting, colors, and composition that create immersive mood
+
+The product should be:
+- Present but secondary - a natural part of the scene, not the focal point
+- Integrated into what the people are doing (being used, nearby, held casually)
+- Never isolated, centered, or staged
+- Proportionally small in the frame (background or mid-ground, not close-up)
+
+Think: "People living their best life, brand values visible in how they live" NOT "People posing with product"
 </scene_approach>
 `;
 
@@ -233,9 +246,11 @@ Create a lifestyle image showing the product in a real-world setting. The scene 
       prompt += `\n<reference_image_provided>true</reference_image_provided>
 <integration_requirements>
 - Feature exact product from reference (do not redesign)
-- Show naturally in lifestyle scene (not isolated)
+- Place SMALL in the frame - background or mid-ground, never close-up
+- Show being used/held casually by people, or nearby in environment
 - Maintain visual accuracy (colors, materials, proportions)
-- Visible and recognizable, but not dominating
+- Recognizable but subtle - the scene should work even if product removed
+- CRITICAL: People and environment are the focal point, product is contextual detail
 </integration_requirements>
 `;
     }
@@ -282,12 +297,21 @@ Create a lifestyle image showing the product in a real-world setting. The scene 
   prompt += `\n<output_instructions>
 Generate a detailed image description synthesizing all inputs above.
 
+START WITH: The scene, people, and what they're doing
+THEN: Environment, lighting, mood, atmosphere
+FINALLY: Where/how the product fits in naturally
+
 Requirements:
 - Write as a complete visual description (not meta-instructions)
 - Be specific: lighting, composition, colors, mood, details
-- Authentically represent brand while resonating with audience
-- Natural product integration in lifestyle context
+- Lead with lifestyle/vibe, not product
+- Include full human subjects with clear activities/emotions
+- Product should be small detail in larger scene
+- Authentically represent brand values through the world depicted
 - No mention of platforms, models, or technical processes
+
+BAD EXAMPLE: "A sleek laptop on a minimalist desk with coffee cup nearby"
+GOOD EXAMPLE: "A designer works intently at a sunlit studio desk, sketching with headphones on, surrounded by inspiration boards and plants. Their laptop is open in the background running design software, while morning light streams through industrial windows."
 </output_instructions>
 `;
 
