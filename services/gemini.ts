@@ -82,9 +82,17 @@ export interface SelectProductOptions {
   brief?: string;
 }
 
+export interface ProductSelectionScores {
+  visualPotential: number;
+  brandAlignment: number;
+  audienceAppeal: number;
+  socialShareability: number;
+}
+
 export interface SelectProductResult {
   selectedProduct: ProductInfo;
-  reasoning?: string;
+  reasoning: string;
+  scores?: ProductSelectionScores;
 }
 
 export async function selectProduct(
@@ -123,7 +131,7 @@ export async function selectProduct(
       contents: prompt,
     });
 
-    const selectedProductName =
+    const responseText =
       response.candidates?.[0]?.content?.parts
         ?.map((part) => {
           if ("text" in part) {
@@ -134,38 +142,87 @@ export async function selectProduct(
         .join("")
         .trim() || "";
 
-    if (!selectedProductName) {
-      throw new Error("No product name returned from AI selection");
+    if (!responseText) {
+      throw new Error("No response returned from AI selection");
+    }
+
+    // Parse JSON response
+    let selectionData: {
+      selectedProductName: string;
+      reasoning: string;
+      visualPotentialScore?: number;
+      brandAlignmentScore?: number;
+      audienceAppealScore?: number;
+      socialShareabilityScore?: number;
+    };
+
+    try {
+      // Extract JSON if wrapped in code blocks
+      const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText;
+      selectionData = JSON.parse(jsonText);
+    } catch (parseError) {
+      // Fallback: treat as plain text product name (backward compatibility)
+      const selectedProduct = products.find(
+        (p) => p.name.toLowerCase() === responseText.toLowerCase()
+      );
+
+      if (selectedProduct) {
+        return {
+          selectedProduct,
+          reasoning: "Selected by AI (legacy format)",
+        };
+      }
+
+      throw new Error(
+        `Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : "Unknown error"}. Response: ${responseText}`
+      );
+    }
+
+    if (!selectionData.selectedProductName) {
+      throw new Error("AI response missing selectedProductName field");
     }
 
     // Find matching product (case-insensitive)
     const selectedProduct = products.find(
-      (p) => p.name.toLowerCase() === selectedProductName.toLowerCase()
+      (p) => p.name.toLowerCase() === selectionData.selectedProductName.toLowerCase()
     );
 
     if (!selectedProduct) {
       // Try fuzzy matching - check if the returned name is contained in any product name
       const fuzzyMatch = products.find(
         (p) =>
-          p.name.toLowerCase().includes(selectedProductName.toLowerCase()) ||
-          selectedProductName.toLowerCase().includes(p.name.toLowerCase())
+          p.name.toLowerCase().includes(selectionData.selectedProductName.toLowerCase()) ||
+          selectionData.selectedProductName.toLowerCase().includes(p.name.toLowerCase())
       );
 
       if (fuzzyMatch) {
         return {
           selectedProduct: fuzzyMatch,
-          reasoning: `AI selected: ${selectedProductName} (matched to ${fuzzyMatch.name})`,
+          reasoning: selectionData.reasoning || `AI selected: ${selectionData.selectedProductName} (matched to ${fuzzyMatch.name})`,
+          scores: {
+            visualPotential: selectionData.visualPotentialScore || 0,
+            brandAlignment: selectionData.brandAlignmentScore || 0,
+            audienceAppeal: selectionData.audienceAppealScore || 0,
+            socialShareability: selectionData.socialShareabilityScore || 0,
+          },
         };
       }
 
       throw new Error(
-        `AI selected product "${selectedProductName}" not found in products list`
+        `AI selected product "${selectionData.selectedProductName}" not found in products list. Available products: ${products.map(p => p.name).join(", ")}`
       );
     }
 
     return {
       selectedProduct,
-      reasoning: `AI selected: ${selectedProductName}`,
+      reasoning: selectionData.reasoning || `AI selected: ${selectionData.selectedProductName}`,
+      scores: {
+        visualPotential: selectionData.visualPotentialScore || 0,
+        brandAlignment: selectionData.brandAlignmentScore || 0,
+        audienceAppeal: selectionData.audienceAppealScore || 0,
+        socialShareability: selectionData.socialShareabilityScore || 0,
+      },
     };
   } catch (err) {
     throw new Error(
