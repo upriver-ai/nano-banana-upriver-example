@@ -44,37 +44,25 @@ export function buildImageGenerationPrompt(options: GeneratePromptOptions): stri
     audienceInsightsCitations,
   } = options;
 
-  let prompt = `You are a creative director crafting lifestyle brand imagery.
+  let prompt = `Generate a detailed image description for a lifestyle photograph - a candid moment where the product is naturally present, not a staged product shot.
 
-<task>
-Generate a detailed image description for an image generation model. Output a single, vivid description of a photograph capturing a LIFESTYLE MOMENT, not a product shot.
+<approach>
+Prioritize: scene/vibe → person/activity → environment/lighting → product (subtle detail)
 
-PRIORITY ORDER:
-1. The scene, vibe, and atmosphere that embodies the brand
-2. The people and their authentic activity/emotion
-3. The environment and lighting that creates the mood
-4. The product as a natural, subtle element within this world
+Create documentary-style imagery:
+- One or more people (solo moments or groups - choose what fits the scene)
+- Mid-action, genuine emotion, not camera-aware
+- Lived-in environments with natural imperfections
+- Organic lighting with shadows (not flat/studio)
+- Off-center composition, cropped elements
+- Product small in frame (10-25% max), background/mid-ground only
 
-The image should feel like a documentary photograph of someone's real life, where the product happens to be present. Think: lifestyle editorial, not e-commerce.
-</task>
-`;
+Think: lifestyle editorial capturing real life, not e-commerce photoshoot.
+</approach>
 
-  prompt += `\n<constraints>
 <technical>
-- Aspect ratio: 1:1 square (social media optimized)
-- Composition: Rule of thirds for balance
-- Avoid: Copyrighted elements, identifiable faces, text overlays
-- Contrast: Sufficient for accessibility
+1:1 square. Rule of thirds. Avoid: identifiable faces, copyrighted elements, text, centered/symmetrical staging.
 </technical>
-
-<creative>
-- PRIMARY FOCUS: People, environment, moment, emotion
-- Product visibility: Subtle presence (10-25% of visual weight max)
-- Human subjects: Include full people engaged in activities
-- Scene authenticity: Real moments, not staged arrangements
-- Diverse representation (unless narrow audience specified)
-</creative>
-</constraints>
 `;
 
   // BRAND URL & ADDITIONAL INSTRUCTIONS
@@ -143,14 +131,7 @@ The image should feel like a documentary photograph of someone's real life, wher
 
       prompt += `</personas>
 
-<synthesis_task>
-Translate these psychological insights into visual elements:
-- Settings that resonate with motivations
-- Mood and atmosphere aligned with triggers
-- Visual style reflecting personality traits
-- Color palette evoking emotional response
-- Compositions leveraging psychological patterns
-</synthesis_task>
+<synthesis_task>Translate psychology → visuals: settings from motivations, mood from triggers, style from traits.</synthesis_task>
 `;
     }
 
@@ -206,57 +187,6 @@ Translate these psychological insights into visual elements:
 `;
   }
 
-  prompt += `\n<scene_approach>
-Create a lifestyle image where the SCENE is the hero, not the product.
-
-The image should show:
-- PEOPLE: Full human subjects (not just hands) engaged in authentic activities
-- ENVIRONMENT: Rich, detailed setting that embodies the brand vibe
-- MOMENT: A specific slice of life (morning ritual, social gathering, creative pursuit, outdoor adventure)
-- EMOTION: Visible connection, joy, focus, calm - whatever resonates with the brand
-- ATMOSPHERE: Lighting, colors, and composition that create immersive mood
-
-The product should be:
-- Present but secondary - a natural part of the scene, not the focal point
-- Integrated into what the people are doing (being used, nearby, held casually)
-- Never isolated, centered, or staged
-- Proportionally small in the frame (background or mid-ground, not close-up)
-
-Think: "People living their best life, brand values visible in how they live" NOT "People posing with product"
-</scene_approach>
-
-<naturalness_requirements>
-CRITICAL: The scene must look UNSTAGED and CANDID. Avoid any appearance of a photoshoot.
-
-Natural Human Elements:
-- Body language: Mid-movement, asymmetric poses, natural gestures (not facing camera, not "ready" poses)
-- Expressions: Genuine emotion focused on activity, not camera-aware smiles
-- Imperfections: Messy hair, wrinkled clothes, relaxed postures
-- Interaction: People engaged with each other or their task, not acknowledging camera
-
-Environmental Authenticity:
-- Lived-in spaces: Slight clutter, personal items, signs of use
-- Natural lighting: Window light, golden hour, shadows and highlights (not flat/perfect studio lighting)
-- Organic composition: Slightly off-center subjects, elements cropped at frame edges
-- Real-world messiness: Backgrounds that feel inhabited, not art-directed
-
-AVOID THESE STAGED INDICATORS:
-❌ Perfect symmetry or centered subjects
-❌ Everyone looking at camera or posed "naturally"
-❌ Pristine, magazine-perfect environments
-❌ Flat, even lighting with no shadows
-❌ Product perfectly positioned for camera
-❌ Models clearly "acting casual"
-
-AIM FOR THESE CANDID QUALITIES:
-✓ Subject caught mid-laugh, mid-conversation, mid-action
-✓ Slightly blurred motion or natural depth of field
-✓ Cropped body parts at frame edge (feels like a stolen moment)
-✓ Uneven lighting with real shadows
-✓ Background slightly out of focus with visible context
-✓ People looking at each other, not camera
-</naturalness_requirements>
-`;
 
   if (productDetails && !("error" in productDetails)) {
     prompt += `\n<product>
@@ -275,15 +205,7 @@ AIM FOR THESE CANDID QUALITIES:
     }
 
     if (productDetails.images && productDetails.images.length > 0) {
-      prompt += `\n<reference_image_provided>true</reference_image_provided>
-<integration_requirements>
-- Feature exact product from reference (do not redesign)
-- Place SMALL in the frame - background or mid-ground, never close-up
-- Show being used/held casually by people, or nearby in environment
-- Maintain visual accuracy (colors, materials, proportions)
-- Recognizable but subtle - the scene should work even if product removed
-- CRITICAL: People and environment are the focal point, product is contextual detail
-</integration_requirements>
+      prompt += `\n<reference_image>Use exact product from reference. Place small in background/mid-ground, naturally integrated (being used casually or nearby). Maintain accuracy but keep subtle - scene works without it.</reference_image>
 `;
     }
 
@@ -309,16 +231,11 @@ AIM FOR THESE CANDID QUALITIES:
     audienceInsightsCitations.citations.length > 0
   ) {
     prompt += `\n<citations>
-<note>Real audience conversations (${audienceInsightsCitations.citations.length} sources). Extract authentic contexts and moments.</note>
+Real audience conversations - extract authentic contexts:
 `;
 
-    audienceInsightsCitations.citations.slice(0, 5).forEach((citation, index) => {
-      prompt += `
-<citation id="${index + 1}" relevance="${citation.relevance_score}">
-<text>${citation.text.slice(0, 200)}${citation.text.length > 200 ? '...' : ''}</text>
-<source>${citation.source}${citation.subreddit ? ` (r/${citation.subreddit})` : ''}</source>
-<why_relevant>${citation.reason}</why_relevant>
-</citation>
+    audienceInsightsCitations.citations.slice(0, 3).forEach((citation) => {
+      prompt += `"${citation.text.slice(0, 150)}${citation.text.length > 150 ? '...' : ''}" (${citation.source})
 `;
     });
 
@@ -326,33 +243,15 @@ AIM FOR THESE CANDID QUALITIES:
 `;
   }
 
-  prompt += `\n<output_instructions>
-Generate a detailed image description synthesizing all inputs above.
+  prompt += `\n<output>
+Write a detailed visual description. Start with scene/person/action, then environment/lighting, finally product placement.
 
-START WITH: The scene, people, and what they're doing
-THEN: Environment, lighting, mood, atmosphere
-FINALLY: Where/how the product fits in naturally
+Example style (solo): "A designer sketches at a sunlit desk, hair tied back messily, surrounded by inspiration boards and sample materials. Morning light creates strong shadows across the workspace. Their laptop sits half-open in the background, barely visible."
 
-Requirements:
-- Write as a complete visual description (not meta-instructions)
-- Be specific: lighting, composition, colors, mood, details
-- Lead with lifestyle/vibe, not product
-- Include full human subjects with clear activities/emotions
-- Product should be small detail in larger scene
-- Authentically represent brand values through the world depicted
-- Include natural imperfections and candid qualities (see naturalness_requirements)
-- No mention of platforms, models, or technical processes
+Example style (group): "Two friends laugh mid-conversation at a cluttered cafe table, afternoon sunlight streaming through windows. One gestures animatedly, the other leans back relaxed. A laptop sits forgotten at the table's edge among coffee cups."
 
-BAD EXAMPLES (too staged/product-focused):
-❌ "A sleek laptop on a minimalist desk with coffee cup nearby"
-❌ "A woman smiling at camera while holding product in perfect lighting"
-❌ "Product centered on clean surface with aesthetic props arranged around it"
-
-GOOD EXAMPLES (candid lifestyle moments):
-✓ "Two friends laugh over shared headphones at a cafe table cluttered with notebooks and coffee cups, afternoon sunlight streaming through the window creating warm shadows. One gestures animatedly while the other leans back in their chair, both mid-conversation. A laptop sits open but forgotten at the table's edge."
-✓ "A runner pauses mid-trail to check their watch, slightly out of breath, one hand on their hip. Morning mist hangs in the pine forest behind them, their water bottle visible clipped to their waist. The frame catches them from an angle, body turned away from camera."
-✓ "In a sunlit kitchen, someone kneads dough with flour-dusted hands, hair pulled back messily. Ingredient containers and bowls crowd the counter in organized chaos. Natural window light creates strong shadows across the marble surface. A cookbook lies open in the background."
-</output_instructions>
+Be specific about lighting, composition, mood. Lead with lifestyle, not product. Include natural imperfections and candid qualities. Choose solo or group based on what feels authentic for the brand moment.
+</output>
 `;
 
   return prompt;
