@@ -182,3 +182,22 @@ export interface InsightCitationsResponse {
   citations: Citation[];
   continuation_token: string | null;
 }
+
+export interface ProductDetailsOptions {
+  brand_name: string;
+  product_name: string;
+  product_url?: string | null;
+  effort?: "auto" | "low" | "mid" | "high";
+}
+
+export interface ProductDetailsResponse {
+  name: string;
+  description: string;
+  features: string[];
+  specifications: Record<string, unknown>;
+  price: string | null;
+  currency: string | null;
+  reviews_summary: string | null;
+  alternatives: string[];
+  images: string[];
+}

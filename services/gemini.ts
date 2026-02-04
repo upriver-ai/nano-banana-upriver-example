@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import type {
   BrandResearchResponse,
   ProductsResponse,
+  ProductDetailsResponse,
   AudienceInsightsResponse,
   InsightCitationsResponse,
 } from "./upriver-types";
@@ -15,6 +16,7 @@ export interface GeneratePromptOptions {
   additionalInstructions?: string;
   brandResearch: BrandResearchResponse | null;
   products: ProductsResponse | null;
+  productDetails: ProductDetailsResponse | null;
   audienceInsights: AudienceInsightsResponse | null;
   audienceInsightsCitations: InsightCitationsResponse | null;
 }
@@ -29,6 +31,7 @@ function buildPromptTemplate(options: GeneratePromptOptions): string {
     additionalInstructions,
     brandResearch,
     products,
+    productDetails,
     audienceInsights,
     audienceInsightsCitations,
   } = options;
@@ -37,6 +40,8 @@ function buildPromptTemplate(options: GeneratePromptOptions): string {
 
 Your task is to create a detailed, comprehensive image generation prompt that will be used to generate a visual representation of a brand. The prompt must:
 
+• When reference images are provided, they show specific products or objects that MUST appear in the generated image
+• Prioritize product accuracy from reference images while incorporating brand visual language
 • Synthesize all available brand context including identity, values, mission, and visual language
 • Incorporate product information and brand offerings when available
 • Align with the target audience's preferences, motivations, and psychological triggers
@@ -50,6 +55,7 @@ Guidelines for the prompt:
 • Specify composition, lighting, mood, and color palette when relevant
 • Include style references (e.g., "modern minimalist", "vibrant and energetic", "sophisticated and elegant")
 • Mention any key visual elements, symbols, or motifs that represent the brand
+• When reference images are provided, the generated image MUST feature those products prominently and accurately
 • Consider the audience's perspective and what would resonate with them
 • Ensure the prompt is self-contained and doesn't require additional context
 • Do NOT mention specific image generation models, platforms, or tools (e.g., Midjourney, DALL-E, Stable Diffusion, etc.)
@@ -64,6 +70,38 @@ Guidelines for the prompt:
 
   if (additionalInstructions && additionalInstructions.trim()) {
     prompt += `\nAdditional Instructions: ${additionalInstructions.trim()}\n`;
+  }
+
+  // PRODUCT DETAILS FIRST - Most important for visual accuracy
+  if (productDetails && !("error" in productDetails)) {
+    prompt += `\n## PRODUCT SPECIFICATIONS (CRITICAL)\n`;
+
+    if (productDetails.images && productDetails.images.length > 0) {
+      prompt += `\nREFERENCE IMAGE PROVIDED\n`;
+      prompt += `A reference image showing the actual product has been included with this request.\n\n`;
+    }
+
+    prompt += `• Product Name: ${productDetails.name}\n`;
+    prompt += `• Visual Description: ${productDetails.description}\n`;
+
+    if (productDetails.features && productDetails.features.length > 0) {
+      prompt += `• Product Features: ${productDetails.features.join(", ")}\n`;
+    }
+
+    if (productDetails.price) {
+      prompt += `• Price: ${productDetails.price}${productDetails.currency ? ` ${productDetails.currency}` : ""}\n`;
+    }
+
+    if (productDetails.images && productDetails.images.length > 0) {
+      prompt += `\nMANDATORY REQUIREMENT:\n`;
+      prompt += `The generated image MUST feature this specific product from the reference image.\n`;
+      prompt += `• Include the product prominently and accurately as shown in the reference image\n`;
+      prompt += `• Do NOT redesign, stylize, or create a different product\n`;
+      prompt += `• Do NOT use a generic or simplified version of the product\n`;
+      prompt += `• The product should be the focal point of the image\n`;
+      prompt += `• Match the product's visual appearance, colors, materials, and proportions exactly\n`;
+      prompt += `• Place the product in a contextually appropriate scene that aligns with the brand and target audience\n\n`;
+    }
   }
 
   if (brandResearch && !("error" in brandResearch)) {
@@ -104,7 +142,7 @@ Guidelines for the prompt:
   }
 
   if (products && !("error" in products) && products.products) {
-    prompt += `\n## Products\n`;
+    prompt += `\n## Additional Products\n`;
     if (products.products.length > 0) {
       prompt += `• Product Categories:\n`;
       products.products.slice(0, 10).forEach((product) => {
@@ -161,7 +199,14 @@ Guidelines for the prompt:
     prompt += `• Found ${audienceInsightsCitations.citations.length} relevant citations from audience research\n`;
   }
 
-  prompt += `\nNow, create a comprehensive image generation prompt that synthesizes all of this information. The prompt should be detailed, visually descriptive, and optimized for generating an image that authentically represents this brand while resonating with its target audience. Remember: do not mention any specific image generation models or platforms - focus solely on the visual description and artistic direction.`;
+  prompt += `\nNow, create a comprehensive image generation prompt that synthesizes all of this information. The prompt should be detailed, visually descriptive, and optimized for generating an image that authentically represents this brand while resonating with its target audience.`;
+
+  // Add specific instruction if product images are present
+  if (productDetails && productDetails.images && productDetails.images.length > 0) {
+    prompt += ` CRITICAL: The product from the reference image must be the central focus and appear exactly as shown. Build the scene around this product while incorporating the brand's visual language and audience preferences.`;
+  }
+
+  prompt += ` Remember: do not mention any specific image generation models or platforms - focus solely on the visual description and artistic direction.`;
 
   return prompt;
 }

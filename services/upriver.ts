@@ -9,6 +9,8 @@ import type {
   AudienceInsightsResponse,
   InsightCitationsOptions,
   InsightCitationsResponse,
+  ProductDetailsOptions,
+  ProductDetailsResponse,
 } from "./upriver-types";
 
 const UPRIVER_API_BASE = "https://api.upriver.ai";
@@ -100,4 +102,17 @@ export async function getInsightCitations(
     },
     apiKey
   );
+}
+
+export async function getProductDetails(
+  options: ProductDetailsOptions,
+  apiKey?: string
+): Promise<ProductDetailsResponse> {
+  return fetchUpriver<ProductDetailsResponse>("/v1/brand/product", {
+    method: "POST",
+    body: JSON.stringify({
+      effort: "low",
+      ...options,
+    }),
+  }, apiKey);
 }

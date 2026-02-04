@@ -28,10 +28,12 @@ export default function Home() {
     error,
     brandResearch,
     products,
+    productDetails,
     audienceInsights,
     audienceInsightsCitations,
     brandResearchStatus,
     productsStatus,
+    productDetailsStatus,
     audienceInsightsStatus,
     audienceInsightsCitationsStatus,
     brandProductDetailsComplete,
@@ -96,6 +98,7 @@ export default function Home() {
                 {getApiEndpoints(UPRIVER_DOCS_URL, {
                   brandResearch,
                   products,
+                  productDetails,
                   audienceInsights,
                   audienceInsightsCitations,
                 }).map((endpoint, index) => {
@@ -105,6 +108,8 @@ export default function Home() {
                   } else if (index === 1) {
                     status = productsStatus;
                   } else if (index === 2) {
+                    status = productDetailsStatus;
+                  } else if (index === 3) {
                     status = audienceInsightsStatus;
                   } else {
                     status = audienceInsightsCitationsStatus;
