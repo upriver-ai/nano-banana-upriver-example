@@ -1,6 +1,7 @@
 "use server";
 
 import { GoogleGenAI } from "@google/genai";
+import { withRetry } from "@/lib/retry-logic";
 
 const DEFAULT_MODEL = "gemini-3-pro-image-preview";
 
@@ -65,22 +66,28 @@ export async function generateImage(
   // Add text prompt
   contentParts.push({ text: options.prompt });
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: contentParts,
-  });
+  return withRetry(async () => {
+    const response = await ai.models.generateContent({
+      model,
+      contents: contentParts,
+    });
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      const mimeType = part.inlineData.mimeType || "image/png";
-      const dataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        const mimeType = part.inlineData.mimeType || "image/png";
+        const dataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
 
-      return {
-        dataUrl,
-        mimeType,
-      };
+        return {
+          dataUrl,
+          mimeType,
+        };
+      }
     }
-  }
 
-  throw new Error("No image data found in response");
+    throw new Error("No image data found in response");
+  }, {
+    // Image generation may take longer, allow more retries
+    maxRetries: 2,
+    initialDelayMs: 2000,
+  });
 }
