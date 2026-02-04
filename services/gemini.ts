@@ -167,14 +167,15 @@ Guidelines for the prompt:
 }
 
 export async function generateImagePrompt(
-  options: GeneratePromptOptions
+  options: GeneratePromptOptions,
+  apiKey?: string
 ): Promise<GeneratePromptResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set in environment variables");
+  const key = apiKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not set. Please provide an API key in settings or set the environment variable.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: key });
   const model = DEFAULT_MODEL;
 
   const prompt = buildPromptTemplate(options);

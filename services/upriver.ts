@@ -13,26 +13,27 @@ import type {
 
 const UPRIVER_API_BASE = "https://api.upriver.ai";
 
-function getApiKey(): string {
-  const apiKey = process.env.UPRIVER_API_KEY;
+function getApiKey(providedKey?: string): string {
+  const apiKey = providedKey || process.env.UPRIVER_API_KEY;
   if (!apiKey) {
-    throw new Error("UPRIVER_API_KEY is not set in environment variables");
+    throw new Error("UPRIVER_API_KEY is not set. Please provide an API key in settings or set the environment variable.");
   }
   return apiKey;
 }
 
 async function fetchUpriver<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  apiKey?: string
 ): Promise<T> {
-  const apiKey = getApiKey();
+  const key = getApiKey(apiKey);
   const url = `${UPRIVER_API_BASE}${endpoint}`;
 
   const response = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": apiKey,
+      "X-API-Key": key,
       ...options.headers,
     },
   });
@@ -48,7 +49,8 @@ async function fetchUpriver<T>(
 }
 
 export async function getBrandDetails(
-  options: BrandResearchOptions
+  options: BrandResearchOptions,
+  apiKey?: string
 ): Promise<BrandResearchResponse> {
   return fetchUpriver<BrandResearchResponse>("/v2/brand/research", {
     method: "POST",
@@ -57,11 +59,12 @@ export async function getBrandDetails(
       effort: "auto",
       ...options,
     }),
-  });
+  }, apiKey);
 }
 
 export async function getProducts(
-  options: ProductsOptions
+  options: ProductsOptions,
+  apiKey?: string
 ): Promise<ProductsResponse> {
   return fetchUpriver<ProductsResponse>("/v1/brand/products", {
     method: "POST",
@@ -70,11 +73,12 @@ export async function getProducts(
       effort: "auto",
       ...options,
     }),
-  });
+  }, apiKey);
 }
 
 export async function getAudienceInsights(
-  options: AudienceInsightsOptions
+  options: AudienceInsightsOptions,
+  apiKey?: string
 ): Promise<AudienceInsightsResponse> {
   return fetchUpriver<AudienceInsightsResponse>("/v2/audience_insights", {
     method: "POST",
@@ -82,16 +86,18 @@ export async function getAudienceInsights(
       citations_mode: "async",
       ...options,
     }),
-  });
+  }, apiKey);
 }
 
 export async function getInsightCitations(
-  options: InsightCitationsOptions
+  options: InsightCitationsOptions,
+  apiKey?: string
 ): Promise<InsightCitationsResponse> {
   return fetchUpriver<InsightCitationsResponse>(
     `/v2/audience_insights/${options.continuation_token}/citations`,
     {
       method: "GET",
-    }
+    },
+    apiKey
   );
 }

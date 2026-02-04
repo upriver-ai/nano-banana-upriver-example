@@ -15,14 +15,15 @@ export interface GenerateImageResult {
 }
 
 export async function generateImage(
-  options: GenerateImageOptions
+  options: GenerateImageOptions,
+  apiKey?: string
 ): Promise<GenerateImageResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set in environment variables");
+  const key = apiKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not set. Please provide an API key in settings or set the environment variable.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: key });
   const model = options.model || DEFAULT_MODEL;
 
   const response = await ai.models.generateContent({
