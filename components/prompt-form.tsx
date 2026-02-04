@@ -50,6 +50,8 @@ export function PromptForm({
 }: PromptFormProps) {
   const form = useForm<PromptFormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onSubmit",
+    reValidateMode: "onBlur",
     defaultValues: {
       brandUrl: "",
       brief: "",
