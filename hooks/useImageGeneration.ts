@@ -182,10 +182,6 @@ export function useImageGeneration() {
                   geminiApiKey
                 );
                 selectedProduct = selectionResult.selectedProduct;
-                console.log(
-                  "AI selected product:",
-                  selectionResult.reasoning || selectedProduct.name
-                );
               } catch (err) {
                 console.warn(
                   "AI product selection failed, using random fallback:",
@@ -200,23 +196,32 @@ export function useImageGeneration() {
               }
 
               if (selectedProduct) {
-                setProductDetailsStatus(CodeBlockStatus.LOADING);
+                // Only fetch product details if we have a valid brand name
+                const brandName = brandResearchData?.brand?.name;
+                if (brandName) {
+                  setProductDetailsStatus(CodeBlockStatus.LOADING);
 
-                try {
-                  productDetailsData = await getProductDetails(
-                    {
-                      brand_name: brandResearchData?.brand.name || "",
-                      product_name: selectedProduct.name,
-                      product_url: selectedProduct.url,
-                    },
-                    upriverApiKey
-                  );
-                  setProductDetailsStatus(CodeBlockStatus.SUCCESS);
-                  setProductDetails(productDetailsData);
-                } catch (err) {
+                  try {
+                    productDetailsData = await getProductDetails(
+                      {
+                        brand_name: brandName,
+                        product_name: selectedProduct.name,
+                        product_url: selectedProduct.url,
+                      },
+                      upriverApiKey
+                    );
+                    setProductDetailsStatus(CodeBlockStatus.SUCCESS);
+                    setProductDetails(productDetailsData);
+                  } catch (err) {
+                    console.warn(
+                      "Product details unavailable:",
+                      err instanceof Error ? err.message : "Unknown error"
+                    );
+                    setProductDetailsStatus(CodeBlockStatus.ERROR);
+                  }
+                } else {
                   console.warn(
-                    "Product details unavailable:",
-                    err instanceof Error ? err.message : "Unknown error"
+                    "Skipping product details: brand name not available"
                   );
                   setProductDetailsStatus(CodeBlockStatus.ERROR);
                 }
@@ -263,9 +268,12 @@ export function useImageGeneration() {
             setAudienceInsightsCitationsStatus(CodeBlockStatus.LOADING);
 
             try {
-              audienceInsightsCitationsData = await getInsightCitations({
-                continuation_token: continuationToken,
-              }, upriverApiKey);
+              audienceInsightsCitationsData = await getInsightCitations(
+                {
+                  continuation_token: continuationToken,
+                },
+                upriverApiKey
+              );
               setAudienceInsightsCitationsStatus(CodeBlockStatus.SUCCESS);
               setAudienceInsightsCitations(audienceInsightsCitationsData);
             } catch (err) {
@@ -281,30 +289,41 @@ export function useImageGeneration() {
           setAudienceInsightsComplete(true);
         }
 
-        const promptResult = await generateImagePrompt({
-          brandUrl: brandUrlValue || "",
-          additionalInstructions: briefValue.trim() || undefined,
-          brandResearch: brandResearchData,
-          products: productsData,
-          productDetails: productDetailsData,
-          audienceInsights: audienceInsightsData,
-          audienceInsightsCitations: audienceInsightsCitationsData,
-        }, geminiApiKey);
+        const promptResult = await generateImagePrompt(
+          {
+            brandUrl: brandUrlValue || "",
+            additionalInstructions: briefValue.trim() || undefined,
+            brandResearch: brandResearchData,
+            products: productsData,
+            productDetails: productDetailsData,
+            audienceInsights: audienceInsightsData,
+            audienceInsightsCitations: audienceInsightsCitationsData,
+          },
+          geminiApiKey
+        );
         setPromptBuilt(true);
 
         setImageGenerating(true);
 
         // Extract reference images from product details
         const referenceImageUrls: string[] = [];
-        if (productDetailsData && productDetailsData.images && productDetailsData.images.length > 0) {
+        if (
+          productDetailsData &&
+          productDetailsData.images &&
+          productDetailsData.images.length > 0
+        ) {
           // Use the first image as reference
           referenceImageUrls.push(productDetailsData.images[0]);
         }
 
-        const imageResult = await generateImage({
-          prompt: promptResult.prompt,
-          referenceImageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
-        }, geminiApiKey);
+        const imageResult = await generateImage(
+          {
+            prompt: promptResult.prompt,
+            referenceImageUrls:
+              referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
+          },
+          geminiApiKey
+        );
         setImageDataUrl(imageResult.dataUrl);
         setImageGenerating(false);
       } catch (err) {
