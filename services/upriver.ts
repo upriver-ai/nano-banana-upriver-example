@@ -1,5 +1,6 @@
 "use server";
 
+import { withRetry, isRateLimitResponse, getRetryAfterMs } from "@/lib/retry-logic";
 import type {
   BrandResearchOptions,
   BrandResearchResponse,
@@ -31,23 +32,27 @@ async function fetchUpriver<T>(
   const key = getApiKey(apiKey);
   const url = `${UPRIVER_API_BASE}${endpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": key,
-      ...options.headers,
-    },
+  return withRetry(async () => {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": key,
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      // Include status code in error message for retry logic to detect 429/503
+      throw new Error(
+        `Upriver API error (${response.status}): ${response.statusText} - ${errorText}`
+      );
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Upriver API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  return response.json();
 }
 
 export async function getBrandDetails(

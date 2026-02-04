@@ -1,6 +1,7 @@
 "use server";
 
 import { GoogleGenAI } from "@google/genai";
+import { withRetry } from "@/lib/retry-logic";
 import type {
   BrandResearchResponse,
   ProductsResponse,
@@ -52,28 +53,30 @@ export async function generateImagePrompt(
 
   const prompt = buildPromptTemplate(options);
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
+  return withRetry(async () => {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+    });
+
+    const generatedText =
+      response.candidates?.[0]?.content?.parts
+        ?.map((part) => {
+          if ("text" in part) {
+            return part.text;
+          }
+          return "";
+        })
+        .join("") || "";
+
+    if (!generatedText.trim()) {
+      throw new Error("No text generated from Gemini");
+    }
+
+    return {
+      prompt: generatedText.trim(),
+    };
   });
-
-  const generatedText =
-    response.candidates?.[0]?.content?.parts
-      ?.map((part) => {
-        if ("text" in part) {
-          return part.text;
-        }
-        return "";
-      })
-      .join("") || "";
-
-  if (!generatedText.trim()) {
-    throw new Error("No text generated from Gemini");
-  }
-
-  return {
-    prompt: generatedText.trim(),
-  };
 }
 
 export interface SelectProductOptions {
@@ -126,25 +129,29 @@ export async function selectProduct(
   const prompt = buildProductSelectionPrompt({ products, brandResearch, brief });
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
+    const responseText = await withRetry(async () => {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+      });
+
+      const text =
+        response.candidates?.[0]?.content?.parts
+          ?.map((part) => {
+            if ("text" in part) {
+              return part.text;
+            }
+            return "";
+          })
+          .join("")
+          .trim() || "";
+
+      if (!text) {
+        throw new Error("No response returned from AI selection");
+      }
+
+      return text;
     });
-
-    const responseText =
-      response.candidates?.[0]?.content?.parts
-        ?.map((part) => {
-          if ("text" in part) {
-            return part.text;
-          }
-          return "";
-        })
-        .join("")
-        .trim() || "";
-
-    if (!responseText) {
-      throw new Error("No response returned from AI selection");
-    }
 
     // Parse JSON response
     let selectionData: {
